@@ -94,6 +94,29 @@ async def collect_session_strings(client, message):
     else:
         await message.reply("⚠️ कृपया पहले /make_config <number> कमांड का उपयोग करके session strings जोड़ें।")
 
+# 🎯 Remove Config Command (Remove Session Strings)
+@bot.on_message(filters.command("remove_config"))
+async def remove_config(client, message):
+    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    
+    if not config or not config.get("is_session_added", False):
+        return await message.reply("⚠️ कोई session strings जोड़े नहीं गए हैं।")
+
+    # Clear session strings from MongoDB
+    sessions_collection.delete_many({})  # Remove all session strings
+
+    # Update the config flag
+    config_collection.update_one(
+        {"bot_id": BOT_TOKEN},
+        {"$set": {"is_session_added": False}},  # Mark session as removed
+        upsert=True
+    )
+
+    # Clear local session string list
+    session_strings.clear()
+
+    await message.reply("⚠️ सभी session strings हटा दिए गए हैं। अब आपको रिपोर्ट करने से पहले /make_config कमांड का उपयोग करना होगा।")
+
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
