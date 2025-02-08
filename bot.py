@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sqlite3
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -9,6 +8,7 @@ from pyrogram.raw.types import (
     InputReportReasonChildAbuse, InputReportReasonPornography, InputReportReasonCopyright,
     InputReportReasonFake, InputReportReasonIllegalDrugs, InputReportReasonPersonalDetails
 )
+import pymongo
 
 # 📌 Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -16,21 +16,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # 🛠 Configuration
 API_ID = 23120489
 API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
-BOT_TOKEN = "7782975743:AAGuVZ4Ip9mk8DwUtYYLb8nYD1T4PHugkDU"
+BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 
-# 📂 SQLite Database setup
-conn = sqlite3.connect('bot_config.db')
-cursor = conn.cursor()
-
-# Create table to store user data (session strings and config)
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS user_configs (
-    user_id INTEGER PRIMARY KEY,
-    session_strings TEXT,
-    config_made BOOLEAN
-)
-""")
-conn.commit()
+# MongoDB Configuration
+client_mongo = pymongo.MongoClient("mongodb+srv://sanatanixtech:sachin@sachin.9guym.mongodb.net/?retryWrites=true&w=majority&appName=Sachin")
+db = client_mongo['report_bot_db']
+sessions_collection = db['sessions']
+reports_collection = db['reports']
 
 # 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -38,20 +30,6 @@ bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 # 🔹 Session storage and flag to check if sessions are added
 session_strings = []
 is_session_added = False  # Flag to track if sessions are added
-
-# Function to check if a user has already made a config
-def check_user_config(user_id):
-    cursor.execute("SELECT * FROM user_configs WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-    return user_data
-
-# Function to update user config in the database
-def update_user_config(user_id, session_strings, config_made):
-    cursor.execute("""
-    INSERT OR REPLACE INTO user_configs (user_id, session_strings, config_made)
-    VALUES (?, ?, ?)
-    """, (user_id, session_strings, config_made))
-    conn.commit()
 
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
@@ -88,9 +66,7 @@ async def make_config(client, message):
     global is_session_added  # Use global variable to track session status
 
     # Check if sessions are already added
-    user_id = message.from_user.id
-    user_data = check_user_config(user_id)
-    if user_data and user_data[2]:  # If config_made is True
+    if is_session_added:
         return await message.reply("⚠️ Sessions are already configured! You can now start reporting.")
 
     args = message.text.split()
@@ -124,12 +100,12 @@ async def collect_session_strings(client, message):
             session_strings.extend(new_sessions)
             await message.reply(f"✅ {len(new_sessions)} session strings added successfully.")
             
-            # Save to database
-            update_user_config(message.from_user.id, ' '.join(new_sessions), True)
-
             # Reset expected session count and mark sessions as added
             del bot.expected_session_count
             is_session_added = True  # Set flag to True
+
+            # Save sessions in MongoDB
+            sessions_collection.insert_many([{"session_string": session} for session in new_sessions])
 
             # Send confirmation
             await message.reply("✅ All session strings have been added! You can now proceed with reporting.")
@@ -258,6 +234,9 @@ async def send_bulk_reports(client, callback_query):
             await userbot.stop()
 
         await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
+
+        # Save report in MongoDB
+        reports_collection.insert_one({"username": username, "reason": reason_code, "count": count})
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
