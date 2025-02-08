@@ -22,8 +22,6 @@ API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"  # Replace with your API Hash
 BOT_TOKEN = "7854222423:AAENyQ95hobcR_CFGKeDfhrwbH2MU"  # Replace with your Bot Token
 STRING_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy2LX3sBMy5D88nTLf4Qv8srW5AFx0Rec5jUj4hpRmednZkKL7_gXLexaPS-hnSRVYE9gYZHpR68gYEj3TN3a_NStvmW2nLsufUscza6J2awVq2rrQFrUX9_oop5MuAcRYsgWapB0p0pm4Z_FGG3M377ivchaklTcOjqelr0a_SLvFCEFRUT2fd5bnLyyIOulK0nSU1Fo42i0Yej4iVCLZ03c2-pWvPU3WCW5AA5vuEVepGzcBZ7PvlFzQ6VHoLPA3bjtVLZ9i2E-tUdyfQJ_3tHrQ4guD7QObwAAAAGllg0RAA"  # Replace with your String Session
 
-OWNER_ID = 7073041681  # Replace with your Telegram User ID (Only Numbers)
-
 # Initialize Pyrogram Clients
 bot = Client("report_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=STRING_SESSION)
@@ -77,28 +75,11 @@ async def report_user(client, message):
         logging.error(f"Error: {e}")
         await message.reply("⚠️ Failed to report. Check the username and reason.")
 
-# 🔹 Start Notification Function
-async def send_start_notifications():
-    try:
-        async with bot:
-            await bot.send_message(OWNER_ID, "✅ **Bot Started Successfully!**")
-    except Exception as e:
-        logging.error(f"❌ Bot Notification Error: {e}")
-
-    try:
-        async with userbot:
-            await userbot.send_message(OWNER_ID, "✅ **Userbot Started Successfully!**")
-    except Exception as e:
-        logging.error(f"❌ Userbot Notification Error: {e}")
-
 # 🔹 Main Function
 async def main():
     await bot.start()
     await userbot.start()
     logging.info("✅ Bot & Userbot started successfully!")
-
-    # Send Start Notification
-    await send_start_notifications()
 
     # Keep Bot Running
     await asyncio.Event().wait()
