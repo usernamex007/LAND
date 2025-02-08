@@ -45,7 +45,7 @@ async def make_config(client, message):
     # Check if user has already created a config
     user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if user_config and user_config.get("is_session_added", False):
+    if user_config and user_config.get("is_session_added", True):
         return await message.reply("⚠️ सत्र पहले ही जोड़ दिए गए हैं! आप अब रिपोर्ट करना शुरू कर सकते हैं.")
 
     args = message.text.split()
@@ -114,7 +114,7 @@ async def remove_config(client, message):
 
     user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if not user_config or not user_config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", True):
         return await message.reply("⚠️ कोई session strings जोड़े नहीं गए हैं।")
 
     # Clear session strings from MongoDB
@@ -139,7 +139,7 @@ async def report_user(client, message):
 
     user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if not user_config or not user_config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", True):
         return await message.reply("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।")
 
     buttons = [
@@ -166,7 +166,7 @@ async def handle_report(client, callback_query):
     user_id = callback_query.from_user.id
     user_config = user_config_collection.find_one({"user_id": user_id})
 
-    if not user_config or not user_config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", True):
         return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
@@ -209,7 +209,7 @@ async def send_bulk_reports(client, callback_query):
     user_id = callback_query.from_user.id
     user_config = user_config_collection.find_one({"user_id": user_id})
 
-    if not user_config or not user_config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", True):
         return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
