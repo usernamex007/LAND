@@ -17,10 +17,10 @@ from pyrogram.raw.types import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Set up your API credentials
-API_ID = 28795512
-API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
-BOT_TOKEN = ""  # If using bot
-STRING_SESSION = "your_string_session_here"  # If using userbot
+API_ID = 28795512  # Replace with your API ID
+API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"  # Replace with your API Hash
+BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"  # Replace with your bot token (leave empty if using userbot)
+STRING_SESSION = "1AZWarzsBuxcmT-FRpGtdfxSeKqkguVjCHH60My8SKxrHTrAUIY1gGvD4mG51N1a1f_Zrv_Y73RZD3ZaQy7cOyVXYlgZIKXSQ1GZfNsouA5stBHyPBvdMX11pTLuoMeAmjn9a0XOxiHOKA4Ye4LUE9OMIVdgtFgauJWqAcTYpnqALAJyjcotAINyOv00FpPPZyoGyY3aKcyz7YJccddQfowYx56nsDnJRttxjI7wj9a5lXDfOxOwhbh7acJIBVtK5EV0f9eJQ9-vLBrkbPrOxavc7okcTLzKcpRDFv-xO4L373WAfGUhouc4KYfPVbxzmdFKgX6U-3ajSZ9a9eauZDZxakWfKr9U="  # Replace with your string session (leave empty if using a bot)# If using userbot
 
 # Initialize Pyrogram client
 if BOT_TOKEN:
