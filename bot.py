@@ -20,8 +20,9 @@ BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 # 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# 🔹 Session storage
+# 🔹 Session storage and flag to check if sessions are added
 session_strings = []
+is_session_added = False  # Flag to track if sessions are added
 
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
@@ -55,6 +56,12 @@ async def help_command(client, update):
 # 🎯 Make Config Command
 @bot.on_message(filters.command("make_config"))
 async def make_config(client, message):
+    global is_session_added  # Use global variable to track session status
+
+    # Check if sessions are already added
+    if is_session_added:
+        return await message.reply("⚠️ Sessions are already configured! You can now start reporting.")
+
     args = message.text.split()
 
     if len(args) < 2:
@@ -74,7 +81,7 @@ async def make_config(client, message):
 # 🎯 Collect Session Strings
 @bot.on_message(filters.text)
 async def collect_session_strings(client, message):
-    global session_strings
+    global session_strings, is_session_added
 
     if hasattr(bot, 'expected_session_count') and len(session_strings) < bot.expected_session_count:
         session_input = message.text.strip()
@@ -86,87 +93,120 @@ async def collect_session_strings(client, message):
             session_strings.extend(new_sessions)
             await message.reply(f"✅ {len(new_sessions)} session strings added successfully.")
             
-            # Reset expected session count
+            # Reset expected session count and mark sessions as added
             del bot.expected_session_count
+            is_session_added = True  # Set flag to True
 
-            # Send confirmation and ask for the target username
-            await message.reply("✅ All session strings have been added! Now, please provide the target username for reporting.")
+            # Send confirmation
+            await message.reply("✅ All session strings have been added! You can now proceed with reporting.")
         else:
             await message.reply(f"⚠️ You need to provide exactly {bot.expected_session_count} session strings. Please try again.")
     else:
         await message.reply("⚠️ Please start by using the /make_config <number> command to add session strings.")
 
-# 🎯 Report Command (Target username and quantity)
-@bot.on_message(filters.text)
-async def ask_for_target_username_and_count(client, message):
+# 🎯 Report Command (User chooses a reason)
+@bot.on_message(filters.command("report"))
+async def report_user(client, message):
     if not session_strings:
         return await message.reply("⚠️ No session added! Please use /make_config first.")
+
+    args = message.text.split()
     
-    if hasattr(bot, 'expected_session_count') and len(session_strings) == bot.expected_session_count:
-        # If all session strings are added, we ask for username
-        if not hasattr(bot, 'target_username'):
-            await message.reply("⚠️ Please provide the target username (e.g., @username) to report.")
-            bot.target_username = "waiting"  # Flag indicating we are waiting for the username
+    if len(args) < 2:
+        return await message.reply("⚠️ Usage: `/report @username`")
 
-# 🎯 Collect Target Username
-@bot.on_message(filters.text)
-async def collect_target_username(client, message):
-    if hasattr(bot, 'target_username') and bot.target_username == "waiting":
-        target_username = message.text.strip()
-        
-        # Save the target username
-        bot.target_username = target_username
+    username = args[1]
 
-        await message.reply(f"⚠️ You selected @{target_username}. Now, please provide how many reports you want to send (e.g., 10, 50, 100).")
+    buttons = [
+        [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
+        [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
+        [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
+        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
+        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
+        [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
+        [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
+        [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
+        [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
+        [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+    ]
     
-# 🎯 Collect Report Quantity
-@bot.on_message(filters.text)
-async def collect_report_quantity(client, message):
-    if hasattr(bot, 'target_username') and bot.target_username != "waiting":
-        username = bot.target_username
-        report_count = message.text.strip()
-
-        try:
-            report_count = int(report_count)
-            if report_count not in [10, 50, 100, 200]:
-                raise ValueError("Invalid count")
-
-            # Store report count and proceed with reason selection
-            bot.report_count = report_count
-
-            await message.reply(f"⚠️ You selected {report_count} reports for @{username}. Now, please select a reason for reporting.")
-
-            # Reason buttons
-            report_buttons = [
-                [InlineKeyboardButton("Spam", callback_data=f"report:{username}:spam")],
-                [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
-                [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
-                [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
-            ]
-            await message.reply(
-                f"⚠️ Select a reason to report @{username}:",
-                reply_markup=InlineKeyboardMarkup(report_buttons)
-            )
-        except ValueError:
-            await message.reply("⚠️ Please enter a valid number of reports (10, 50, 100, 200).")
+    await message.reply(
+        f"⚠️ Select a reason to report {username}:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 # 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
-    username = callback_query.data.split(":")[1]
-    reason_code = callback_query.data.split(":")[2]
+    global session_strings
 
-    # Use the stored count from previous step
-    count = bot.report_count  # Set this in the earlier step where you handle report count
+    if not session_strings:
+        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
 
-    # Map the reason to the correct report reason
+    data = callback_query.data.split(":")
+    
+    if len(data) < 3:
+        return
+
+    username = data[1]
+    reason_code = data[2]
+
     reason_mapping = {
         "spam": InputReportReasonSpam(),
         "violence": InputReportReasonViolence(),
         "child_abuse": InputReportReasonChildAbuse(),
+        "porn": InputReportReasonPornography(),
+        "copyright": InputReportReasonCopyright(),
+        "fake": InputReportReasonFake(),
+        "illegal_goods": InputReportReasonIllegalDrugs(),
+        "personal_data": InputReportReasonPersonalDetails(),
         "other": InputReportReasonOther()
     }
+
+    reason = reason_mapping.get(reason_code, InputReportReasonOther())
+
+    # 🎯 Choose number of reports
+    buttons = [
+        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
+        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
+        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
+        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
+    ]
+
+    await callback_query.message.edit_text(
+        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+# 🎯 Bulk Report Handler
+@bot.on_callback_query(filters.regex("^sendreport:"))
+async def send_bulk_reports(client, callback_query):
+    global session_strings
+
+    if not session_strings:
+        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
+
+    data = callback_query.data.split(":")
     
+    if len(data) < 4:
+        return
+
+    username = data[1]
+    reason_code = data[2]
+    count = int(data[3])
+
+    reason_mapping = {
+        "spam": InputReportReasonSpam(),
+        "violence": InputReportReasonViolence(),
+        "child_abuse": InputReportReasonChildAbuse(),
+        "porn": InputReportReasonPornography(),
+        "copyright": InputReportReasonCopyright(),
+        "fake": InputReportReasonFake(),
+        "illegal_goods": InputReportReasonIllegalDrugs(),
+        "personal_data": InputReportReasonPersonalDetails(),
+        "other": InputReportReasonOther()
+    }
+
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
     try:
@@ -183,7 +223,7 @@ async def handle_report(client, callback_query):
 
             await userbot.stop()
 
-        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against @{username} for {reason_code.replace('_', ' ').title()}!")
+        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
