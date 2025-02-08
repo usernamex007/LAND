@@ -39,28 +39,45 @@ async def report_user(client, message):
         reason = args[2].lower()
 
         # 🎯 Get user details
-        entity = await userbot.get_users(username)
-        logging.info(f"✅ Entity Found: {entity}")
+        try:
+            entity = await userbot.get_users(username)
+            logging.info(f"✅ Entity Found: {entity}")
+        except Exception as e:
+            logging.error(f"❌ Failed to get user entity: {e}")
+            return await message.reply(f"⚠️ Could not find user `{username}`.")
 
-        peer = await userbot.resolve_peer(entity.id)
-        logging.info(f"✅ Peer Resolved: {peer}")
+        # 🎯 Resolve peer
+        try:
+            peer = await userbot.resolve_peer(entity.id)
+            logging.info(f"✅ Peer Resolved: {peer}")
+        except Exception as e:
+            logging.error(f"❌ Failed to resolve peer: {e}")
+            return await message.reply("⚠️ Error resolving peer. User might be private or invalid.")
 
         # 🎯 Report user
-        await userbot.invoke(ReportPeer(peer=peer, reason=InputReportReasonSpam(), message="Reported by bot"))
-        await message.reply(f"✅ Successfully reported {username} for {reason}.")
-    
+        try:
+            await userbot.invoke(ReportPeer(peer=peer, reason=InputReportReasonSpam(), message="Reported by bot"))
+            await message.reply(f"✅ Successfully reported {username} for {reason}.")
+        except Exception as e:
+            logging.error(f"❌ Error reporting user: {e}")
+            await message.reply("⚠️ Failed to report the user. Telegram might have blocked this action.")
+
     except Exception as e:
-        logging.error(f"Error: {e}")
-        await message.reply(f"⚠️ Failed to report. Error: {e}")
+        logging.error(f"❌ General error in report command: {e}")
+        await message.reply(f"⚠️ Unexpected error: {e}")
 
 # 🎯 Start Bot & Userbot
 async def main():
-    await bot.start()
-    await userbot.start()
-    logging.info("✅ Bot & Userbot started successfully!")
+    try:
+        await bot.start()
+        await userbot.start()
+        logging.info("✅ Bot & Userbot started successfully!")
+        
+        # 🎯 Keep both clients running
+        await asyncio.Future()  # यह कोड बॉट को हमेशा रनिंग रखेगा
 
-    # 🎯 Keep both clients running
-    await asyncio.Future()  # यह कोड बॉट को हमेशा रनिंग रखेगा
+    except Exception as e:
+        logging.error(f"❌ Error in main function: {e}")
 
 if __name__ == "__main__":
     try:
