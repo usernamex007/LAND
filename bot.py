@@ -34,8 +34,8 @@ is_session_added = False  # Flag to track if sessions are added
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    welcome_text = "👋 Welcome! Use /make_config <number> to add multiple session strings."
-    buttons = [[InlineKeyboardButton("❓ Help", callback_data="show_help")]]
+    welcome_text = "👋 स्वागत है! कई session strings जोड़ने के लिए /make_config <number> का उपयोग करें।"
+    buttons = [[InlineKeyboardButton("❓ मदद", callback_data="show_help")]]
     
     await message.reply(
         welcome_text,
@@ -47,13 +47,13 @@ async def start_command(client, message):
 @bot.on_callback_query(filters.regex("^show_help$"))
 async def help_command(client, update):
     help_text = """
-📌 *How to use this bot:*
-1️⃣ Use `/make_config <number>` to add session strings (e.g., `/make_config 5`).
-2️⃣ Use `/report @username` to report a user.
-3️⃣ Select a reason for reporting from the buttons.
-4️⃣ Choose the number of reports to send (e.g., 10, 50, 100, 200).
+📌 *इस बोट का उपयोग कैसे करें:*
+1️⃣ `/make_config <number>` का उपयोग करें ताकि आप session strings जोड़ सकें (जैसे, `/make_config 5`).
+2️⃣ `/report @username` का उपयोग करें किसी उपयोगकर्ता की रिपोर्ट करने के लिए।
+3️⃣ रिपोर्टिंग के लिए कारण चुनें।
+4️⃣ रिपोर्ट भेजने के लिए संख्या चुनें (जैसे, 10, 50, 100, 200 तक)।
 
-✅ You can send multiple reports like 10, 50, 100, or 200 at once!
+✅ आप एक साथ 10, 50, 100, या 200 रिपोर्ट भेज सकते हैं!
 """
     if isinstance(update, filters.callback_query):
         await update.message.edit_text(help_text)
@@ -67,19 +67,19 @@ async def make_config(client, message):
 
     # Check if sessions are already added
     if is_session_added:
-        return await message.reply("⚠️ Sessions are already configured! You can now start reporting.")
+        return await message.reply("⚠️ सत्र पहले ही कॉन्फ़िगर किए गए हैं! अब आप रिपोर्ट करना शुरू कर सकते हैं।")
 
     args = message.text.split()
 
     if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/make_config <number>` where <number> is the count of session strings you want to add.")
+        return await message.reply("⚠️ उपयोग: `/make_config <number>` जहाँ <number> वह संख्या है, जितने session strings आप जोड़ना चाहते हैं।")
 
     try:
         session_count = int(args[1])  # Number of session strings
     except ValueError:
-        return await message.reply("⚠️ Please provide a valid number.")
+        return await message.reply("⚠️ कृपया एक वैध संख्या प्रदान करें।")
 
-    await message.reply(f"⚙️ Please provide {session_count} session strings in the following format (separate by spaces):\n\n<session_string_1> <session_string_2> ...")
+    await message.reply(f"⚙️ कृपया {session_count} session strings प्रदान करें (स्पेस से अलग करके):")
 
     # Store expected session count
     session_strings.clear()  # Clear previous session strings
@@ -98,7 +98,7 @@ async def collect_session_strings(client, message):
 
         if len(new_sessions) == bot.expected_session_count:
             session_strings.extend(new_sessions)
-            await message.reply(f"✅ {len(new_sessions)} session strings added successfully.")
+            await message.reply(f"✅ {len(new_sessions)} session strings सफलतापूर्वक जोड़ी गईं।")
             
             # Reset expected session count and mark sessions as added
             del bot.expected_session_count
@@ -107,29 +107,25 @@ async def collect_session_strings(client, message):
             # Save sessions in MongoDB
             sessions_collection.insert_many([{"session_string": session} for session in new_sessions])
 
-            # Debug: Print session strings to verify
-            print("Session strings added:", session_strings)
-
             # Send confirmation
-            await message.reply("✅ All session strings have been added! You can now proceed with reporting.")
+            await message.reply("✅ सभी session strings जोड़ दिए गए हैं! अब आप रिपोर्ट भेज सकते हैं।")
         else:
-            await message.reply(f"⚠️ You need to provide exactly {bot.expected_session_count} session strings. Please try again.")
+            await message.reply(f"⚠️ आपको ठीक {bot.expected_session_count} session strings प्रदान करनी होंगी। कृपया फिर से प्रयास करें।")
     else:
-        await message.reply("⚠️ No need to add session strings again! Sessions have been configured. You can proceed with reporting.")
+        await message.reply("⚠️ कृपया पहले /make_config <number> कमांड का उपयोग करें।")
 
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
-    if not is_session_added:  # Check if sessions are added before proceeding
-        return await message.reply("⚠️ No session added! Please use /make_config first.")
+    if not session_strings:
+        return await message.reply("⚠️ कोई session जोड़ा नहीं गया! कृपया पहले /make_config का उपयोग करें।")
 
     args = message.text.split()
     
     if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/report @username`")
+        return await message.reply("⚠️ उपयोग: `/report @username`")
 
     username = args[1]
-    print(f"Attempting to report user: {username}")
 
     buttons = [
         [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
@@ -145,7 +141,7 @@ async def report_user(client, message):
     ]
     
     await message.reply(
-        f"⚠️ Select a reason to report {username}:",
+        f"⚠️ {username} को रिपोर्ट करने के लिए कारण चुनें:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -155,7 +151,7 @@ async def handle_report(client, callback_query):
     global session_strings
 
     if not session_strings:
-        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
+        return await callback_query.answer("⚠️ कोई session जोड़ा नहीं गया! कृपया पहले /make_config का उपयोग करें।", show_alert=True)
 
     data = callback_query.data.split(":")
     
@@ -188,7 +184,7 @@ async def handle_report(client, callback_query):
     ]
 
     await callback_query.message.edit_text(
-        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        f"✅ चुना गया कारण: {reason_code.replace('_', ' ').title()}\n\nरिपोर्ट भेजने की संख्या चुनें:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -198,7 +194,7 @@ async def send_bulk_reports(client, callback_query):
     global session_strings
 
     if not session_strings:
-        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
+        return await callback_query.answer("⚠️ कोई session जोड़ा नहीं गया! कृपया पहले /make_config का उपयोग करें।", show_alert=True)
 
     data = callback_query.data.split(":")
     
@@ -228,20 +224,17 @@ async def send_bulk_reports(client, callback_query):
             userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
             await userbot.start()
 
-            # Perform the report
-            peer = await userbot.get_users(username)
-            await userbot.invoke(ReportPeer(
-                peer=peer,
+            entity = await userbot.get_users(username)
+            await userbot.send(Request=ReportPeer(
+                peer=entity,
                 reason=reason,
-                message="User reported for violating rules."
+                message=""
             ))
 
             await userbot.stop()
-        
-        await callback_query.answer(f"✅ {count} reports sent for {username}.", show_alert=True)
+        await callback_query.answer(f"✅ {count} रिपोर्ट्स {username} को भेजी गईं।", show_alert=True)
     except Exception as e:
-        await callback_query.answer(f"⚠️ Failed to send reports. Error: {str(e)}", show_alert=True)
+        await callback_query.answer(f"⚠️ एक त्रुटि हुई: {e}", show_alert=True)
 
 # Run the bot
-if __name__ == "__main__":
-    bot.run()
+bot.run()
