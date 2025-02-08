@@ -85,14 +85,19 @@ async def main():
     await bot.start()
     logging.info("✅ Bot started successfully!")
 
-    # 🎯 Keep bot running
-    await asyncio.Future()
+    try:
+        await asyncio.Future()  # Keeps bot running
+    except asyncio.CancelledError:
+        logging.info("❌ Stopping Bot...")
+
+    finally:
+        await bot.stop()
+        if userbot:
+            await userbot.stop()
+        logging.info("✅ Bot stopped successfully!")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("❌ Stopping Bot...")
-        asyncio.run(bot.stop())
-        if userbot:
-            asyncio.run(userbot.stop())
+        logging.info("❌ Bot manually stopped.")
