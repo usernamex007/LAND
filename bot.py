@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import signal
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -124,11 +125,15 @@ async def handle_message_link(message, link):
 async def ping(client, message):
     await message.reply("🏓 Pong! The bot is active.")
 
-# Main function
+# Graceful shutdown
 async def main():
     try:
         await bot.start()
         logging.info("✅ Bot started successfully!")
+
+        # Use signal handler for graceful shutdown on KeyboardInterrupt
+        loop = asyncio.get_event_loop()
+        loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(bot.stop()))
 
         # Keep the bot alive
         await asyncio.Event().wait()
