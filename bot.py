@@ -103,28 +103,21 @@ async def report_user(client, message):
     if not config or not config.get("is_session_added", False):
         return await message.reply("⚠️ कृपया पहले /make_config कमांड का उपयोग करके session strings जोड़ें।")
 
-    args = message.text.split()
-    
-    if len(args) < 2:
-        return await message.reply("⚠️ उपयोग: `/report @username`")
-
-    username = args[1]
-
     buttons = [
-        [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
-        [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
-        [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
-        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
-        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
-        [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
-        [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
-        [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
-        [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
-        [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+        [InlineKeyboardButton("I don't like it", callback_data=f"report:other")],
+        [InlineKeyboardButton("Child abuse", callback_data=f"report:child_abuse")],
+        [InlineKeyboardButton("Violence", callback_data=f"report:violence")],
+        [InlineKeyboardButton("Illegal goods", callback_data=f"report:illegal_goods")],
+        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:porn")],
+        [InlineKeyboardButton("Personal data", callback_data=f"report:personal_data")],
+        [InlineKeyboardButton("Terrorism", callback_data=f"report:fake")],
+        [InlineKeyboardButton("Scam or spam", callback_data=f"report:spam")],
+        [InlineKeyboardButton("Copyright", callback_data=f"report:copyright")],
+        [InlineKeyboardButton("Other", callback_data=f"report:other")]
     ]
     
     await message.reply(
-        f"⚠️ {username} के खिलाफ रिपोर्ट करने का कारण चुनें:",
+        f"⚠️ रिपोर्ट करने का कारण चुनें:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -138,11 +131,10 @@ async def handle_report(client, callback_query):
 
     data = callback_query.data.split(":")
     
-    if len(data) < 3:
+    if len(data) < 2:
         return
 
-    username = data[1]
-    reason_code = data[2]
+    reason_code = data[1]
 
     reason_mapping = {
         "spam": InputReportReasonSpam(),
@@ -160,10 +152,10 @@ async def handle_report(client, callback_query):
 
     # 🎯 Choose number of reports
     buttons = [
-        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
-        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
-        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
-        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
+        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{reason_code}:10")],
+        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{reason_code}:50")],
+        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{reason_code}:100")],
+        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{reason_code}:200")]
     ]
 
     await callback_query.message.edit_text(
@@ -181,12 +173,11 @@ async def send_bulk_reports(client, callback_query):
 
     data = callback_query.data.split(":")
     
-    if len(data) < 4:
+    if len(data) < 3:
         return
 
-    username = data[1]
-    reason_code = data[2]
-    count = int(data[3])
+    reason_code = data[1]
+    count = int(data[2])
 
     reason_mapping = {
         "spam": InputReportReasonSpam(),
@@ -207,16 +198,14 @@ async def send_bulk_reports(client, callback_query):
             userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
             await userbot.start()
 
-            entity = await userbot.get_users(username)
-            peer = await userbot.resolve_peer(entity.id)
-
+            # Sending bulk reports
             for i in range(count):
-                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+                await userbot.invoke(ReportPeer(peer=session_string, reason=reason, message="Reported by bot"))
                 await asyncio.sleep(0.5)
 
             await userbot.stop()
 
-        await callback_query.message.edit_text(f"✅ {count} reports successfully sent against {username} for {reason_code.replace('_', ' ').title()}.")
+        await callback_query.message.edit_text(f"✅ {count} reports successfully sent for {reason_code.replace('_', ' ').title()}.")
 
     except Exception as e:
         logging.error(f"Error sending report: {e}")
