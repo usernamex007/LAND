@@ -1,24 +1,22 @@
 import asyncio
 import logging
+import signal
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import signal
+import re
 
-# 📌 Logging setup
+# Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# 🛠 Configuration
-API_ID = 28795512  
-API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
-BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
+# Bot configuration
+API_ID = 23120489  
+API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
+BOT_TOKEN = "7984449177:AAEjwcdh-OlUhJ5E_L26jSZfmCPFDuNK7d4"
 
-# 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
-# 🔹 Userbot session storage
 userbot = None
 
-# 🎯 Start Command with Help Button
+# Start command
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
     buttons = InlineKeyboardMarkup([
@@ -26,7 +24,7 @@ async def start_command(client, message):
     ])
     await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.", reply_markup=buttons)
 
-# 🎯 Help Command
+# Help command
 @bot.on_callback_query(filters.regex("^help$"))
 @bot.on_message(filters.command("help"))
 async def help_command(client, message):
@@ -42,7 +40,7 @@ async def help_command(client, message):
 """
     await message.reply(help_text)
 
-# 🎯 Add Session Command
+# Add session command
 @bot.on_message(filters.command("addsession"))
 async def add_session(client, message):
     global userbot
@@ -66,7 +64,7 @@ async def add_session(client, message):
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
 
-# 🎯 Report Command (User chooses a reason)
+# Report command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
     args = message.text.split()
@@ -96,7 +94,7 @@ async def report_user(client, message):
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# 🎯 Message Link Handling
+# Message link handling
 async def handle_message_link(message, link):
     global userbot
 
@@ -125,7 +123,7 @@ async def handle_message_link(message, link):
         logging.error(f"Error fetching message: {e}")
         await message.reply("⚠️ Failed to fetch message.")
 
-# 🎯 Bulk Report Handler
+# Bulk report handler
 @bot.on_callback_query(filters.regex("^reportmsg:|^report:"))
 async def send_bulk_reports(client, callback_query):
     global userbot
@@ -141,18 +139,18 @@ async def send_bulk_reports(client, callback_query):
         target, reason_code = data[1], data[2]
 
     reason_mapping = {
-        "spam": InputReportReasonSpam(),
-        "violence": InputReportReasonViolence(),
-        "child_abuse": InputReportReasonChildAbuse(),
-        "porn": InputReportReasonPornography(),
-        "copyright": InputReportReasonCopyright(),
-        "fake": InputReportReasonFake(),
-        "illegal_goods": InputReportReasonIllegalDrugs(),
-        "personal_data": InputReportReasonPersonalDetails(),
-        "other": InputReportReasonOther()
+        "spam": "Spam",
+        "violence": "Violence",
+        "child_abuse": "Child Abuse",
+        "porn": "Adult Content",
+        "copyright": "Copyright",
+        "fake": "Terrorism",
+        "illegal_goods": "Illegal Goods",
+        "personal_data": "Personal Data",
+        "other": "Other"
     }
 
-    reason = reason_mapping.get(reason_code, InputReportReasonOther())
+    reason = reason_mapping.get(reason_code, "Other")
 
     buttons = [
         [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{callback_query.data}:10")],
@@ -162,16 +160,16 @@ async def send_bulk_reports(client, callback_query):
     ]
 
     await callback_query.message.edit_text(
-        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        f"✅ Selected reason: {reason}\n\nSelect number of reports to send:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# 🎯 Ping Command
+# Ping command
 @bot.on_message(filters.command("ping"))
 async def ping(client, message):
     await message.reply("🏓 Pong! The bot is active.")
 
-# 🎯 Gracefully handle KeyboardInterrupt
+# Graceful shutdown function
 async def main():
     try:
         await bot.start()
