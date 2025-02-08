@@ -107,6 +107,9 @@ async def collect_session_strings(client, message):
             # Save sessions in MongoDB
             sessions_collection.insert_many([{"session_string": session} for session in new_sessions])
 
+            # Debug: Print session strings to verify
+            print("Session strings added:", session_strings)
+
             # Send confirmation
             await message.reply("✅ All session strings have been added! You can now proceed with reporting.")
         else:
@@ -126,6 +129,7 @@ async def report_user(client, message):
         return await message.reply("⚠️ Usage: `/report @username`")
 
     username = args[1]
+    print(f"Attempting to report user: {username}")
 
     buttons = [
         [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
@@ -224,22 +228,20 @@ async def send_bulk_reports(client, callback_query):
             userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
             await userbot.start()
 
-            entity = await userbot.get_users(username)
-            peer = await userbot.resolve_peer(entity.id)
-
-            for i in range(count):
-                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-                await asyncio.sleep(0.5)
+            # Perform the report
+            peer = await userbot.get_users(username)
+            await userbot.invoke(ReportPeer(
+                peer=peer,
+                reason=reason,
+                message="User reported for violating rules."
+            ))
 
             await userbot.stop()
-
-        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
-
-        # Save report in MongoDB
-        reports_collection.insert_one({"username": username, "reason": reason_code, "count": count})
-
+        
+        await callback_query.answer(f"✅ {count} reports sent for {username}.", show_alert=True)
     except Exception as e:
-        logging.error(f"Error reporting user: {e}")
-        await callback_query.answer("⚠️ Failed to send reports.", show_alert=True)
+        await callback_query.answer(f"⚠️ Failed to send reports. Error: {str(e)}", show_alert=True)
 
-bot.run()
+# Run the bot
+if __name__ == "__main__":
+    bot.run()
