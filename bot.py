@@ -42,6 +42,16 @@ REPORT_REASONS = {
     "personal_info": InputReportReasonPersonalDetails(),
 }
 
+# /start command
+@app.on_message(filters.command("start"))
+async def start_command(client, message):
+    await message.reply(
+        "👋 **Welcome to the Reporting Bot!**\n\n"
+        "Use `/report @username reason` to report users.\n"
+        "Available reasons: spam, fake, violence, porn, child_abuse, copyright, drugs, personal_info.\n\n"
+        "**Example:** `/report @example spam`"
+    )
+
 # Command to report a user
 @app.on_message(filters.command("report") & filters.me if STRING_SESSION else filters.command("report"))
 async def report_user(client, message):
@@ -49,14 +59,14 @@ async def report_user(client, message):
         # Extract command parameters
         args = message.text.split()
         if len(args) < 3:
-            return await message.reply("Usage: /report @username reason (e.g., /report @user spam)")
+            return await message.reply("❌ **Usage:** `/report @username reason`\nExample: `/report @user spam`")
 
         username = args[1]
         reason_key = args[2].lower()
 
         # Validate reason
         if reason_key not in REPORT_REASONS:
-            return await message.reply(f"Invalid reason. Choose from: {', '.join(REPORT_REASONS.keys())}")
+            return await message.reply(f"⚠️ **Invalid reason.** Choose from: {', '.join(REPORT_REASONS.keys())}")
 
         reason = REPORT_REASONS[reason_key]
 
@@ -66,11 +76,11 @@ async def report_user(client, message):
 
         # Send report
         await client.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-        await message.reply(f"✅ Successfully reported {username} for {reason_key}.")
+        await message.reply(f"✅ **Successfully reported {username} for {reason_key}.**")
 
     except Exception as e:
         logging.error(f"Error: {e}")
-        await message.reply("⚠️ Failed to report. Check the username and reason.")
+        await message.reply("⚠️ **Failed to report.** Check the username and reason.")
 
 # Run the bot
 app.run()
