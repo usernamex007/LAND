@@ -44,9 +44,10 @@ async def help_command(client, update):
 1️⃣ Use `/addsession <session_string>` to add a session.
 2️⃣ Use `/report @username` to report a user or `/report <message_link>` to report a specific message.
 3️⃣ Select a reason for reporting from the buttons.
-4️⃣ Reports will be sent automatically.
+4️⃣ After selecting the reason, choose the number of reports to send (10, 100, 500, etc.).
+5️⃣ Reports will be sent automatically.
 
-✅ You can send multiple reports like 10, 50, 100, or 200 at once!
+✅ You can send multiple reports at once!
 """
     if isinstance(update, filters.callback_query):
         await update.message.edit_text(help_text)
@@ -180,22 +181,68 @@ async def handle_report(client, callback_query):
 
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
-    try:
-        if message_id:  # Reporting a specific message
-            # Resolving the peer (group/channel) and reporting the specific message
-            peer = await userbot.resolve_peer(identifier)
-            await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-        
-        else:  # Reporting a user
-            entity = await userbot.get_users(identifier)
-            peer = await userbot.resolve_peer(entity.id)
-            await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+    # Ask for the number of reports after selecting the reason
+    report_buttons = [
+        [InlineKeyboardButton("10", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:10")],
+        [InlineKeyboardButton("100", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:100")],
+        [InlineKeyboardButton("500", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:500")],
+        [InlineKeyboardButton("999", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:999")],
+        [InlineKeyboardButton("Other", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:other")]
+    ]
 
-        await callback_query.message.edit_text(f"✅ Successfully reported for {reason_code.replace('_', ' ').title()}!")
+    await callback_query.message.edit_text(
+        f"⚠️ How many reports would you like to send for {reason_code.replace('_', ' ').title()}?",
+        reply_markup=InlineKeyboardMarkup(report_buttons)
+    )
 
-    except Exception as e:
-        logging.error(f"Error reporting: {e}")
-        await callback_query.answer("⚠️ Failed to report.", show_alert=True)
+# 🎯 Handle report count (User clicks the report count)
+@bot.on_callback_query(filters.regex("^report_count:"))
+async def handle_report_count(client, callback_query):
+    global userbot
+
+    if not userbot:
+        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
+
+    data = callback_query.data.split(":")
+    if len(data) < 5:
+        return
+
+    identifier = data[1]  # Either username or chat_id
+    message_id = int(data[2]) if len(data) > 2 else None
+    reason_code = data[3]
+    count = int(data[4])
+
+    reason_mapping = {
+        "spam": InputReportReasonSpam(),
+        "violence": InputReportReasonViolence(),
+        "child_abuse": InputReportReasonChildAbuse(),
+        "porn": InputReportReasonPornography(),
+        "copyright": InputReportReasonCopyright(),
+        "fake": InputReportReasonFake(),
+        "illegal_goods": InputReportReasonIllegalDrugs(),
+        "personal_data": InputReportReasonPersonalDetails(),
+        "other": InputReportReasonOther()
+    }
+
+    reason = reason_mapping.get(reason_code, InputReportReasonOther())
+
+    # Sending the reports in a loop
+    for _ in range(count):
+        try:
+            if message_id:  # Reporting a specific message
+                peer = await userbot.resolve_peer(identifier)
+                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+            
+            else:  # Reporting a user
+                entity = await userbot.get_users(identifier)
+                peer = await userbot.resolve_peer(entity.id)
+                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+        except Exception as e:
+            logging.error(f"Error reporting: {e}")
+            await callback_query.answer("⚠️ Failed to report.", show_alert=True)
+            return
+
+    await callback_query.message.edit_text(f"✅ Successfully reported {count} times for {reason_code.replace('_', ' ').title()}!")
 
 # 🎯 Ping Command
 @bot.on_message(filters.command("ping"))
