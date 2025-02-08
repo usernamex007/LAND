@@ -8,19 +8,55 @@ from pyrogram.raw.types import InputReportReasonSpam
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # 🛠 Configuration
-API_ID = 28795512  
+API_ID = 28795512  # अपना API_ID डालें
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
-BOT_TOKEN = "7984449177:AAHC4MjJ541UAPnA9MYLqEcXaIrbd7e2I4A"
-USERBOT_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy2LX3sBMy5D88nTLf4Qv8srW5AFx0Rec5jUj4hpRmednZkKL7_gXLexaPS-hnSRVYE9gYZHpR68gYEj3TN3a_NStvmW2nLsufUscza6J2awVq2rrQFrUX9_oop5MuAcRYsgWapB0p0pm4Z_FGG3M377ivchaklTcOjqelr0a_SLvFCEFRUT2fd5bnLyyIOulK0nSU1Fo42i0Yej4iVCLZ03c2-pWvPU3WCW5AA5vuEVepGzcBZ7PvlFzQ6VHoLPA3bjtVLZ9i2E-tUdyfQJ_3tHrQ4guD7QObwAAAAGllg0RAA"
+BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"
 
-# 🎯 Bot & Userbot Clients
+# 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=USERBOT_SESSION)
 
-# 🎯 Report System
+# 🔹 Userbot session storage
+userbot = None
+
+# 🎯 Start Command
+@bot.on_message(filters.command("start"))
+async def start_command(client, message):
+    await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.")
+
+# 🎯 Add Session Command
+@bot.on_message(filters.command("addsession"))
+async def add_session(client, message):
+    global userbot
+
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        return await message.reply("⚠️ Usage: `/addsession <session_string>`")
+
+    session_string = args[1]
+
+    try:
+        # Existing userbot को पहले रोकें
+        if userbot:
+            await userbot.stop()
+
+        # नया userbot शुरू करें
+        userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
+        await userbot.start()
+        
+        await message.reply("✅ Session added successfully! Now you can use /report.")
+    
+    except Exception as e:
+        logging.error(f"Error adding session: {e}")
+        await message.reply(f"⚠️ Failed to add session. Error: {e}")
+
+# 🎯 Report System (Userbot Reports)
 @bot.on_message(filters.command("report"))
-@userbot.on_message(filters.command("report", prefixes="/") & filters.me)
 async def report_user(client, message):
+    global userbot
+
+    if not userbot:
+        return await message.reply("⚠️ No session added! Use /addsession first.")
+
     try:
         args = message.text.split()
         if len(args) < 3:
@@ -30,19 +66,10 @@ async def report_user(client, message):
         reason = args[2].lower()
 
         # 🎯 Get user details
-        try:
-            entity = await userbot.get_users(username)
-        except Exception:
-            return await message.reply("❌ Invalid Username or User not found.")
-
+        entity = await userbot.get_users(username)
         logging.info(f"✅ Entity Found: {entity}")
 
-        # 🎯 Resolve Peer Safely
-        try:
-            peer = await userbot.resolve_peer(entity.id)
-        except Exception:
-            return await message.reply("❌ Could not resolve user. Make sure bot is in the group/channel.")
-
+        peer = await userbot.resolve_peer(entity.id)
         logging.info(f"✅ Peer Resolved: {peer}")
 
         # 🎯 Report user
@@ -53,21 +80,19 @@ async def report_user(client, message):
         logging.error(f"Error: {e}")
         await message.reply(f"⚠️ Failed to report. Error: {e}")
 
-# 🎯 Start Bot & Userbot
+# 🎯 Start Bot
 async def main():
     await bot.start()
-    await userbot.start()
-    logging.info("✅ Bot & Userbot started successfully!")
+    logging.info("✅ Bot started successfully!")
 
-    try:
-        await asyncio.Future()
-    except asyncio.CancelledError:
-        logging.info("❌ Stopping Bot & Userbot...")
-        await bot.stop()
-        await userbot.stop()
+    # 🎯 Keep bot running
+    await asyncio.Future()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("❌ Bot & Userbot Manually Stopped.")
+        logging.info("❌ Stopping Bot...")
+        asyncio.run(bot.stop())
+        if userbot:
+            asyncio.run(userbot.stop())
