@@ -181,7 +181,7 @@ async def ping(client, message):
 async def main():
     await bot.start()
     logging.info("✅ Bot started successfully!")
-    await bot.idle()  # Keeps the bot running and waits for messages
+    await asyncio.Event().wait()  # Keeps the bot running indefinitely
 
 if __name__ == "__main__":
     asyncio.run(main())
