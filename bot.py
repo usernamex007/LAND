@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time  # Import time module
 from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
