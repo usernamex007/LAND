@@ -21,12 +21,12 @@ BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # 🔹 Userbot session storage
-userbots = []  # Multiple sessions
+userbot = None
 
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    welcome_text = "👋 Welcome! Use /addsession <session_string> to add a session."
+    welcome_text = "👋 Welcome! Use /make_config to configure your session settings."
     buttons = [[InlineKeyboardButton("❓ Help", callback_data="show_help")]]
     
     await message.reply(
@@ -34,50 +34,17 @@ async def start_command(client, message):
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# 🎯 Add Session Command (Multiple session addition)
-@bot.on_message(filters.command("addsession"))
-async def add_session(client, message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/addsession <session_string>`")
-
-    try:
-        num_sessions = int(args[1])  # User specifies the number of sessions
-        if num_sessions <= 0:
-            return await message.reply("⚠️ Please specify a valid number of sessions.")
-
-        # Ask user to input session strings
-        await message.reply(f"⚠️ Please enter {num_sessions} session strings separated by space:")
-
-        # Wait for user to input session strings
-        response = await bot.listen(message.chat.id)
-        session_strings = response.text.split()
-
-        if len(session_strings) != num_sessions:
-            return await message.reply("⚠️ The number of session strings does not match the requested amount.")
-
-        # Add sessions to userbots list
-        for session_string in session_strings:
-            userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
-            await userbot.start()
-            userbots.append(userbot)
-
-        await message.reply(f"✅ {num_sessions} sessions added successfully! Now you can use /report.")
-    
-    except Exception as e:
-        logging.error(f"Error adding session: {e}")
-        await message.reply(f"⚠️ Failed to add session. Error: {e}")
-
 # 🎯 Help Command (Button Click or /help)
 @bot.on_message(filters.command("help"))
 @bot.on_callback_query(filters.regex("^show_help$"))
 async def help_command(client, update):
     help_text = """
 📌 *How to use this bot:*
-1️⃣ Use `/addsession <num_sessions>` to add multiple sessions.
-2️⃣ Use `/report @username` to report a user.
-3️⃣ Select a reason for reporting from the buttons.
-4️⃣ Reports will be sent automatically.
+1️⃣ Use `/make_config <number>` to specify how many session strings you want to add.
+2️⃣ Then, use `/addsession` to add those sessions.
+3️⃣ Use `/report @username` to report a user.
+4️⃣ Select a reason for reporting from the buttons.
+5️⃣ Reports will be sent automatically.
 
 ✅ You can send multiple reports like 10, 50, 100, or 200 at once!
 """
@@ -85,6 +52,44 @@ async def help_command(client, update):
         await update.message.edit_text(help_text)
     else:
         await update.reply(help_text)
+
+# 🎯 Make Config Command
+@bot.on_message(filters.command("make_config"))
+async def make_config(client, message):
+    # Asking user how many sessions they want to add
+    await message.reply("⚙️ How many session strings do you want to add? (e.g., 1, 10, 100)")
+
+# 🎯 Add Session Command
+@bot.on_message(filters.command("addsession"))
+async def add_session(client, message):
+    # Taking input for how many session strings user wants to add
+    user_input = message.text.split()
+
+    if len(user_input) < 2:
+        return await message.reply("⚠️ Usage: `/addsession <number_of_sessions>`")
+
+    try:
+        num_sessions = int(user_input[1])  # Number of sessions user wants to add
+        await message.reply(f"✅ You want to add {num_sessions} session(s). Please send your session strings now.")
+        
+        # Now waiting for user to send session strings
+        for i in range(num_sessions):
+            session_message = await client.listen(message.chat.id)
+            session_string = session_message.text
+            try:
+                # Add session string logic here
+                if userbot:
+                    await userbot.stop()
+                userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
+                await userbot.start()
+                await message.reply(f"✅ Session {i+1} added successfully: {session_string}")
+            except Exception as e:
+                logging.error(f"Error adding session: {e}")
+                await message.reply(f"⚠️ Failed to add session {i+1}. Error: {e}")
+
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        await message.reply(f"⚠️ An error occurred while processing your request: {e}")
 
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
@@ -117,9 +122,9 @@ async def report_user(client, message):
 # 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
-    global userbots
+    global userbot
 
-    if not userbots:
+    if not userbot:
         return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
 
     data = callback_query.data.split(":")
@@ -160,9 +165,9 @@ async def handle_report(client, callback_query):
 # 🎯 Bulk Report Handler
 @bot.on_callback_query(filters.regex("^sendreport:"))
 async def send_bulk_reports(client, callback_query):
-    global userbots
+    global userbot
 
-    if not userbots:
+    if not userbot:
         return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
 
     data = callback_query.data.split(":")
@@ -189,13 +194,12 @@ async def send_bulk_reports(client, callback_query):
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
     try:
-        for userbot in userbots:
-            entity = await userbot.get_users(username)
-            peer = await userbot.resolve_peer(entity.id)
+        entity = await userbot.get_users(username)
+        peer = await userbot.resolve_peer(entity.id)
 
-            for i in range(count):
-                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-                await asyncio.sleep(0.5)  
+        for i in range(count):
+            await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+            await asyncio.sleep(0.5)  
 
         await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
 
