@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 API_ID = 28795512  # Replace with your API ID
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"  # Replace with your API Hash
 BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"  # Replace with your bot token (leave empty if using userbot)
-STRING_SESSION = "1AZWarzsBuxcmT-FRpGtdfxSeKqkguVjCHH60My8SKxrHTrAUIY1gGvD4mG51N1a1f_Zrv_Y73RZD3ZaQy7cOyVXYlgZIKXSQ1GZfNsouA5stBHyPBvdMX11pTLuoMeAmjn9a0XOxiHOKA4Ye4LUE9OMIVdgtFgauJWqAcTYpnqALAJyjcotAINyOv00FpPPZyoGyY3aKcyz7YJccddQfowYx56nsDnJRttxjI7wj9a5lXDfOxOwhbh7acJIBVtK5EV0f9eJQ9-vLBrkbPrOxavc7okcTLzKcpRDFv-xO4L373WAfGUhouc4KYfPVbxzmdFKgX6U-3ajSZ9a9eauZDZxakWfKr9U="  # Replace with your string session (leave empty if using a bot)
+STRING_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy2LX3sBMy5D88nTLf4Qv8srW5AFx0Rec5jUj4hpRmednZkKL7_gXLexaPS-hnSRVYE9gYZHpR68gYEj3TN3a_NStvmW2nLsufUscza6J2awVq2rrQFrUX9_oop5MuAcRYsgWapB0p0pm4Z_FGG3M377ivchaklTcOjqelr0a_SLvFCEFRUT2fd5bnLyyIOulK0nSU1Fo42i0Yej4iVCLZ03c2-pWvPU3WCW5AA5vuEVepGzcBZ7PvlFzQ6VHoLPA3bjtVLZ9i2E-tUdyfQJ_3tHrQ4guD7QObwAAAAGllg0RAA"  # Replace with your string session (leave empty if using a bot)
 
 
 # Initialize Bot (Command Handling)
