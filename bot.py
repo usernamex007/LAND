@@ -2,12 +2,7 @@ import asyncio
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.raw.functions.account import ReportPeer
-from pyrogram.raw.types import (
-    InputReportReasonOther, InputReportReasonSpam, InputReportReasonViolence,
-    InputReportReasonChildAbuse, InputReportReasonPornography, InputReportReasonCopyright,
-    InputReportReasonFake, InputReportReasonIllegalDrugs, InputReportReasonPersonalDetails
-)
+import signal
 
 # 📌 Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -176,13 +171,18 @@ async def send_bulk_reports(client, callback_query):
 async def ping(client, message):
     await message.reply("🏓 Pong! The bot is active.")
 
-# 🎯 Start Bot Properly
+# 🎯 Gracefully handle KeyboardInterrupt
 async def main():
     try:
         await bot.start()
         logging.info("✅ Bot started successfully!")
-        while True:
-            await asyncio.sleep(3600)  # Keeps the bot running indefinitely (check every hour)
+        
+        # Use a signal handler to gracefully shutdown
+        loop = asyncio.get_event_loop()
+        loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(bot.stop()))
+
+        # Keep the bot alive
+        await asyncio.Event().wait()
     except KeyboardInterrupt:
         logging.info("🚫 Bot stopped by user.")
     except Exception as e:
