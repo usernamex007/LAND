@@ -181,7 +181,7 @@ async def handle_report(client, callback_query):
 
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
-    # Ask for the number of reports after selecting the reason
+    # After selecting the reason, ask for the number of reports
     report_buttons = [
         [InlineKeyboardButton("10", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:10")],
         [InlineKeyboardButton("100", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:100")],
@@ -243,7 +243,6 @@ async def handle_report_count(client, callback_query):
             return
 
     await callback_query.message.edit_text(f"✅ Successfully reported {count} times for {reason_code.replace('_', ' ').title()}!")
-
 # 🎯 Ping Command
 @bot.on_message(filters.command("ping"))
 async def ping(client, message):
