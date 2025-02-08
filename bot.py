@@ -101,6 +101,7 @@ async def report_user(client, message):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
     
     if not config or not config.get("is_session_added", False):
+        # Allow user to send /make_config if session is not added
         return await message.reply("⚠️ कृपया पहले /make_config कमांड का उपयोग करके session strings जोड़ें।")
 
     buttons = [
