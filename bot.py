@@ -23,6 +23,7 @@ client_mongo = pymongo.MongoClient("mongodb+srv://sanatanixtech:sachin@sachin.9g
 db = client_mongo['report_bot_db']
 sessions_collection = db['sessions']
 config_collection = db['config']  # To store session added flag
+user_config_collection = db['user_config']  # To store user-specific configuration
 
 # 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -39,10 +40,12 @@ async def start_command(client, message):
 # 🎯 Make Config Command
 @bot.on_message(filters.command("make_config"))
 async def make_config(client, message):
-    # Check if sessions are already added
-    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    user_id = message.from_user.id
+
+    # Check if user has already created a config
+    user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if config and config.get("is_session_added", False):
+    if user_config and user_config.get("is_session_added", False):
         return await message.reply("⚠️ सत्र पहले ही जोड़ दिए गए हैं! आप अब रिपोर्ट करना शुरू कर सकते हैं.")
 
     args = message.text.split()
@@ -61,53 +64,65 @@ async def make_config(client, message):
     session_strings.clear()  # Clear previous session strings
     bot.expected_session_count = session_count
 
+    # Save user's config with session count expected
+    user_config_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"expected_session_count": session_count, "is_session_added": False}}, 
+        upsert=True
+    )
+
 # 🎯 Collect Session Strings
 @bot.on_message(filters.text)
 async def collect_session_strings(client, message):
-    if hasattr(bot, 'expected_session_count') and len(session_strings) < bot.expected_session_count:
+    user_id = message.from_user.id
+
+    user_config = user_config_collection.find_one({"user_id": user_id})
+
+    if not user_config or "expected_session_count" not in user_config:
+        return await message.reply("⚠️ कृपया पहले /make_config <number> कमांड का उपयोग करके session strings जोड़ें।")
+
+    if len(session_strings) < user_config['expected_session_count']:
         session_input = message.text.strip()
 
         # Split the input and check if the correct number of session strings were provided
         new_sessions = session_input.split()
 
-        if len(new_sessions) == bot.expected_session_count:
+        if len(new_sessions) == user_config['expected_session_count']:
             session_strings.extend(new_sessions)
             await message.reply(f"✅ {len(new_sessions)} session strings successfully added.")
             
             # Reset expected session count and mark sessions as added
-            del bot.expected_session_count
+            user_config_collection.update_one(
+                {"user_id": user_id},
+                {"$set": {"is_session_added": True}},  # Mark session as added
+                upsert=True
+            )
 
             # Save sessions in MongoDB
             sessions_collection.insert_many([{"session_string": session} for session in new_sessions])
 
-            # Save flag in MongoDB (Mark session as added)
-            config_collection.update_one(
-                {"bot_id": BOT_TOKEN},
-                {"$set": {"is_session_added": True}},  # Make sure the flag is correctly set to True
-                upsert=True
-            )
-
-            # Send confirmation
             await message.reply("✅ सभी session strings जोड़ दिए गए हैं! आप अब रिपोर्टिंग शुरू कर सकते हैं.")
         else:
-            await message.reply(f"⚠️ आपको ठीक {bot.expected_session_count} session strings प्रदान करनी चाहिए। कृपया पुनः प्रयास करें।")
+            await message.reply(f"⚠️ आपको ठीक {user_config['expected_session_count']} session strings प्रदान करनी चाहिए। कृपया पुनः प्रयास करें।")
     else:
-        await message.reply("⚠️ कृपया पहले /make_config <number> कमांड का उपयोग करके session strings जोड़ें।")
+        await message.reply("⚠️ पहले से ही पर्याप्त session strings जोड़े जा चुके हैं।")
 
 # 🎯 Remove Config Command (Remove Session Strings)
 @bot.on_message(filters.command("remove_config"))
 async def remove_config(client, message):
-    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    user_id = message.from_user.id
+
+    user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if not config or not config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", False):
         return await message.reply("⚠️ कोई session strings जोड़े नहीं गए हैं।")
 
     # Clear session strings from MongoDB
-    sessions_collection.delete_many({})  # Remove all session strings
+    sessions_collection.delete_many({"user_id": user_id})  # Remove all session strings for the user
 
     # Update the config flag
-    config_collection.update_one(
-        {"bot_id": BOT_TOKEN},
+    user_config_collection.update_one(
+        {"user_id": user_id},
         {"$set": {"is_session_added": False}},  # Mark session as removed
         upsert=True
     )
@@ -120,10 +135,11 @@ async def remove_config(client, message):
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
-    # Check if session strings have been added
-    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    user_id = message.from_user.id
+
+    user_config = user_config_collection.find_one({"user_id": user_id})
     
-    if not config or not config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", False):
         return await message.reply("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।")
 
     buttons = [
@@ -147,10 +163,10 @@ async def report_user(client, message):
 # 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
-    # Check if session strings have been added
-    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    user_id = callback_query.from_user.id
+    user_config = user_config_collection.find_one({"user_id": user_id})
 
-    if not config or not config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", False):
         return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
@@ -190,10 +206,10 @@ async def handle_report(client, callback_query):
 # 🎯 Bulk Report Handler
 @bot.on_callback_query(filters.regex("^sendreport:"))
 async def send_bulk_reports(client, callback_query):
-    # Check if session strings have been added
-    config = config_collection.find_one({"bot_id": BOT_TOKEN})
+    user_id = callback_query.from_user.id
+    user_config = user_config_collection.find_one({"user_id": user_id})
 
-    if not config or not config.get("is_session_added", False):
+    if not user_config or not user_config.get("is_session_added", False):
         return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
