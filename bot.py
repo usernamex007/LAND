@@ -10,8 +10,8 @@ from pyrogram.raw.types import (
 )
 import pymongo
 
-# 📌 Logging setup for debugging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+# 📌 Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # 🛠 Configuration
 API_ID = 23120489
@@ -34,7 +34,6 @@ is_session_added = False  # Flag to track if sessions are added
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    logging.debug("Start command received")
     welcome_text = "👋 Welcome! Use /make_config <number> to add multiple session strings."
     buttons = [[InlineKeyboardButton("❓ Help", callback_data="show_help")]]
     
@@ -118,7 +117,7 @@ async def collect_session_strings(client, message):
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
-    if not session_strings:
+    if not is_session_added:  # Check if sessions are added before proceeding
         return await message.reply("⚠️ No session added! Please use /make_config first.")
 
     args = message.text.split()
