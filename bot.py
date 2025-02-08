@@ -99,6 +99,9 @@ async def collect_session_strings(client, message):
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
+    if not session_strings:
+        return await message.reply("⚠️ No session added! Please use /make_config first.")
+
     args = message.text.split()
     
     if len(args) < 2:
