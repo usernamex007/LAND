@@ -96,6 +96,7 @@ async def collect_session_strings(client, message):
 async def report_user(client, message):
     global is_session_added
 
+    # Check if session strings are added before reporting
     if not is_session_added:
         return await message.reply("⚠️ सत्र जोड़ा नहीं गया! कृपया पहले /make_config का उपयोग करें।")
 
