@@ -60,13 +60,15 @@ async def main():
     await userbot.start()
     logging.info("✅ Bot & Userbot started successfully!")
 
-    # 🎯 Keep both clients running
-    await asyncio.Future()  # बॉट को रनिंग रखने के लिए
+    try:
+        await asyncio.Future()  # बॉट को रनिंग रखने के लिए
+    except asyncio.CancelledError:
+        logging.info("❌ Stopping Bot & Userbot...")
+        await bot.stop()
+        await userbot.stop()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("❌ Stopping Bot & Userbot...")
-        asyncio.run(bot.stop())
-        asyncio.run(userbot.stop())
+        logging.info("❌ Bot & Userbot Manually Stopped.")
