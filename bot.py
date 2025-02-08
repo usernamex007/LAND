@@ -33,7 +33,7 @@ session_strings = []
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    welcome_text = "👋 स्वागत है! /make_config  का उपयोग करें ताकि आप session strings जोड़ सकें।"
+    welcome_text = "👋 स्वागत है! कृपया /make_config कमांड का उपयोग करें ताकि आप session strings जोड़ सकें।"
     await message.reply(welcome_text)
 
 # 🎯 Make Config Command
@@ -101,7 +101,7 @@ async def report_user(client, message):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
     
     if not config or not config.get("is_session_added", False):
-        return await message.reply("⚠️ कृपया पहले /make_config कमांड का उपयोग करके session strings जोड़ें।")
+        return await message.reply("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।")
 
     buttons = [
         [InlineKeyboardButton("I don't like it", callback_data=f"report:other")],
@@ -127,7 +127,7 @@ async def handle_report(client, callback_query):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
 
     if not config or not config.get("is_session_added", False):
-        return await callback_query.answer("⚠️ कृपया पहले /make_config कमांड का उपयोग करके session strings जोड़ें।", show_alert=True)
+        return await callback_query.answer("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।", show_alert=True)
 
     data = callback_query.data.split(":")
     
@@ -169,7 +169,7 @@ async def send_bulk_reports(client, callback_query):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
 
     if not config or not config.get("is_session_added", False):
-        return await callback_query.answer("⚠️ कृपया पहले /make_config कमांड का उपयोग करके session strings जोड़ें।", show_alert=True)
+        return await callback_query.answer("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।", show_alert=True)
 
     data = callback_query.data.split(":")
     
