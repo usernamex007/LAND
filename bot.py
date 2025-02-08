@@ -187,4 +187,4 @@ async def main():
         logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())  # This ensures that only one event loop is used
