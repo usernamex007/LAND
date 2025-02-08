@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time  # Import time module
 from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -42,9 +43,11 @@ async def help_command(client, update):
     help_text = """
 📌 *How to use this bot:*
 1️⃣ Use `/addsession <session_string>` to add a session.
-2️⃣ Use `/report @username` or `/report <message_link>` to report a user or message.
+2️⃣ Use `/report @username` to report a user or `/report <message_link>` to report a specific message.
 3️⃣ Select a reason for reporting from the buttons.
 4️⃣ Reports will be sent automatically.
+
+✅ You can send multiple reports like 10, 50, 100, or 200 at once!
 """
     if isinstance(update, filters.callback_query):
         await update.message.edit_text(help_text)
@@ -75,6 +78,9 @@ async def add_session(client, message):
         # Use invoke() to send Ping request
         await userbot.invoke(functions.Ping(ping_id=0))
 
+        # Optional: wait a bit after sending ping
+        await asyncio.sleep(1)
+
         await message.reply("✅ Session added successfully! Now you can use /report.")
     
     except Exception as e:
@@ -91,7 +97,7 @@ async def report_user(client, message):
 
     input_data = args[1]
     
-    # Check if input is a message link or username
+    # Check if input is a message link or a username
     if "t.me" in input_data:  # This indicates it's a message link
         try:
             # Extracting message ID and chat_id from the message link
