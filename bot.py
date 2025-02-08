@@ -1,6 +1,6 @@
 import asyncio
 import logging
-import time  # Import time module
+import time
 from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -43,7 +43,7 @@ async def help_command(client, update):
     help_text = """
 📌 *How to use this bot:*
 1️⃣ Use `/addsession <session_string>` to add a session.
-2️⃣ Use `/report @username` to report a user or `/report <message_link>` to report a specific message.
+2️⃣ Use `/report @username`, `/report <user_id>`, or `/report <message_link>` to report.
 3️⃣ Select a reason for reporting from the buttons.
 4️⃣ Reports will be sent automatically.
 
@@ -93,11 +93,11 @@ async def report_user(client, message):
     args = message.text.split()
     
     if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/report @username` or `/report <message_link>`")
+        return await message.reply("⚠️ Usage: `/report @username`, `/report <user_id>`, or `/report <message_link>`")
 
     input_data = args[1]
     
-    # Check if input is a message link or a username
+    # Check if input is a message link, username or user_id
     if "t.me" in input_data:  # This indicates it's a message link
         try:
             # Extracting message ID and chat_id from the message link
@@ -125,6 +125,27 @@ async def report_user(client, message):
         except Exception as e:
             logging.error(f"Error processing the message link: {e}")
             await message.reply("⚠️ Failed to process the message link.")
+    
+    elif input_data.isdigit():  # This indicates it's a user_id
+        user_id = int(input_data)
+
+        buttons = [
+            [InlineKeyboardButton("I don't like it", callback_data=f"report:{user_id}:other")],
+            [InlineKeyboardButton("Child abuse", callback_data=f"report:{user_id}:child_abuse")],
+            [InlineKeyboardButton("Violence", callback_data=f"report:{user_id}:violence")],
+            [InlineKeyboardButton("Illegal goods", callback_data=f"report:{user_id}:illegal_goods")],
+            [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{user_id}:porn")],
+            [InlineKeyboardButton("Personal data", callback_data=f"report:{user_id}:personal_data")],
+            [InlineKeyboardButton("Terrorism", callback_data=f"report:{user_id}:fake")],
+            [InlineKeyboardButton("Scam or spam", callback_data=f"report:{user_id}:spam")],
+            [InlineKeyboardButton("Copyright", callback_data=f"report:{user_id}:copyright")],
+            [InlineKeyboardButton("Other", callback_data=f"report:{user_id}:other")]
+        ]
+        
+        await message.reply(
+            f"⚠️ Select a reason to report user with ID {user_id}:",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
     
     else:  # This indicates it's a username
         username = input_data
@@ -160,7 +181,7 @@ async def handle_report(client, callback_query):
     if len(data) < 4:
         return
 
-    identifier = data[1]  # Either username or chat_id
+    identifier = data[1]  # Either username, user_id or chat_id
     message_id = int(data[2]) if len(data) > 2 else None
     reason_code = data[3]
 
@@ -180,11 +201,10 @@ async def handle_report(client, callback_query):
 
     try:
         if message_id:  # Reporting a specific message
-            # Resolving the peer (group/channel) and reporting the specific message
             peer = await userbot.resolve_peer(identifier)
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
         
-        else:  # Reporting a user
+        else:  # Reporting a user or user_id
             entity = await userbot.get_users(identifier)
             peer = await userbot.resolve_peer(entity.id)
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
