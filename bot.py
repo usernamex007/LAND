@@ -179,9 +179,12 @@ async def ping(client, message):
 
 # 🎯 Start Bot Properly
 async def main():
-    await bot.start()
-    logging.info("✅ Bot started successfully!")
-    await asyncio.Event().wait()  # Keeps the bot running indefinitely
+    try:
+        await bot.start()
+        logging.info("✅ Bot started successfully!")
+        await asyncio.Event().wait()  # Keeps the bot running indefinitely
+    except KeyboardInterrupt:
+        logging.info("🚫 Bot stopped by user.")
 
 if __name__ == "__main__":
     asyncio.run(main())
