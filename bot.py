@@ -80,7 +80,7 @@ async def collect_session_strings(client, message):
             # Save sessions in MongoDB
             sessions_collection.insert_many([{"session_string": session} for session in new_sessions])
 
-            # Save flag in MongoDB
+            # Save flag in MongoDB (Mark session as added)
             config_collection.update_one(
                 {"bot_id": BOT_TOKEN},
                 {"$set": {"is_session_added": True}},
