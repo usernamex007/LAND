@@ -2,7 +2,6 @@ import asyncio
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.raw import functions
 from pyrogram.raw.functions.account import ReportPeer
 from pyrogram.raw.types import (
     InputReportReasonOther, InputReportReasonSpam, InputReportReasonViolence,
@@ -14,15 +13,15 @@ from pyrogram.raw.types import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # 🛠 Configuration
-API_ID = 23120489  
+API_ID = 23120489
 API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
-BOT_TOKEN = "7984449177:AAEjwcdh-OlUhJ5E_L26jSZfmCPFDuNK7d4"
+BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 
 # 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # 🔹 Userbot session storage
-userbot = None
+userbots = []  # Multiple sessions
 
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
@@ -35,14 +34,48 @@ async def start_command(client, message):
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
+# 🎯 Add Session Command (Multiple session addition)
+@bot.on_message(filters.command("addsession"))
+async def add_session(client, message):
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        return await message.reply("⚠️ Usage: `/addsession <session_string>`")
+
+    try:
+        num_sessions = int(args[1])  # User specifies the number of sessions
+        if num_sessions <= 0:
+            return await message.reply("⚠️ Please specify a valid number of sessions.")
+
+        # Ask user to input session strings
+        await message.reply(f"⚠️ Please enter {num_sessions} session strings separated by space:")
+
+        # Wait for user to input session strings
+        response = await bot.listen(message.chat.id)
+        session_strings = response.text.split()
+
+        if len(session_strings) != num_sessions:
+            return await message.reply("⚠️ The number of session strings does not match the requested amount.")
+
+        # Add sessions to userbots list
+        for session_string in session_strings:
+            userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
+            await userbot.start()
+            userbots.append(userbot)
+
+        await message.reply(f"✅ {num_sessions} sessions added successfully! Now you can use /report.")
+    
+    except Exception as e:
+        logging.error(f"Error adding session: {e}")
+        await message.reply(f"⚠️ Failed to add session. Error: {e}")
+
 # 🎯 Help Command (Button Click or /help)
 @bot.on_message(filters.command("help"))
 @bot.on_callback_query(filters.regex("^show_help$"))
 async def help_command(client, update):
     help_text = """
 📌 *How to use this bot:*
-1️⃣ Use `/addsession <session_string>` to add a session.
-2️⃣ Use `/report @username` to report a user or `/report <message_link>` to report a specific message.
+1️⃣ Use `/addsession <num_sessions>` to add multiple sessions.
+2️⃣ Use `/report @username` to report a user.
 3️⃣ Select a reason for reporting from the buttons.
 4️⃣ Reports will be sent automatically.
 
@@ -53,109 +86,83 @@ async def help_command(client, update):
     else:
         await update.reply(help_text)
 
-# 🎯 Add Session Command
-@bot.on_message(filters.command("addsession"))
-async def add_session(client, message):
-    global userbot
-
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/addsession <session_string>`")
-
-    session_string = args[1]
-
-    try:
-        if userbot:
-            await userbot.stop()
-
-        # Creating a new userbot session
-        userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
-        
-        # Starting the userbot session asynchronously
-        await userbot.start()
-
-        # Use invoke() to send Ping request
-        await userbot.invoke(functions.Ping(ping_id=0))
-
-        # Optional: wait a bit after sending ping
-        await asyncio.sleep(1)
-
-        await message.reply("✅ Session added successfully! Now you can use /report.")
-    
-    except Exception as e:
-        logging.error(f"Error adding session: {e}")
-        await message.reply(f"⚠️ Failed to add session. Error: {e}")
-
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
     args = message.text.split()
     
     if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/report @username` or `/report <message_link>`")
+        return await message.reply("⚠️ Usage: `/report @username`")
 
-    input_data = args[1]
+    username = args[1]
+
+    buttons = [
+        [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
+        [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
+        [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
+        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
+        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
+        [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
+        [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
+        [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
+        [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
+        [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+    ]
     
-    # Check if input is a message link or a username
-    if "t.me" in input_data:  # This indicates it's a message link
-        try:
-            # Extracting message ID and chat_id from the message link
-            link_parts = input_data.split("/")
-            if len(link_parts) < 5:
-                return await message.reply("⚠️ Invalid message link format.")
-            
-            chat_id = link_parts[3]  # Channel/Group username or ID
-            message_id = int(link_parts[4])  # Message ID
-
-            buttons = [
-                [InlineKeyboardButton("I don't like it", callback_data=f"report_reason:{chat_id}:{message_id}:other")],
-                [InlineKeyboardButton("Child abuse", callback_data=f"report_reason:{chat_id}:{message_id}:child_abuse")],
-                [InlineKeyboardButton("Violence", callback_data=f"report_reason:{chat_id}:{message_id}:violence")],
-                [InlineKeyboardButton("Illegal goods", callback_data=f"report_reason:{chat_id}:{message_id}:illegal_goods")],
-                [InlineKeyboardButton("Illegal adult content", callback_data=f"report_reason:{chat_id}:{message_id}:porn")],
-                [InlineKeyboardButton("Personal data", callback_data=f"report_reason:{chat_id}:{message_id}:personal_data")],
-                [InlineKeyboardButton("Terrorism", callback_data=f"report_reason:{chat_id}:{message_id}:fake")],
-                [InlineKeyboardButton("Scam or spam", callback_data=f"report_reason:{chat_id}:{message_id}:spam")],
-                [InlineKeyboardButton("Copyright", callback_data=f"report_reason:{chat_id}:{message_id}:copyright")],
-                [InlineKeyboardButton("Other", callback_data=f"report_reason:{chat_id}:{message_id}:other")]
-            ]
-
-            await message.reply(
-                f"⚠️ Select a reason to report the message in {chat_id}:",
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
-        except Exception as e:
-            logging.error(f"Error processing the message link: {e}")
-            await message.reply("⚠️ Failed to process the message link.")
-    
-    else:  # This indicates it's a username
-        username = input_data
-
-        buttons = [
-            [InlineKeyboardButton("I don't like it", callback_data=f"report_reason:{username}:other")],
-            [InlineKeyboardButton("Child abuse", callback_data=f"report_reason:{username}:child_abuse")],
-            [InlineKeyboardButton("Violence", callback_data=f"report_reason:{username}:violence")],
-            [InlineKeyboardButton("Illegal goods", callback_data=f"report_reason:{username}:illegal_goods")],
-            [InlineKeyboardButton("Illegal adult content", callback_data=f"report_reason:{username}:porn")],
-            [InlineKeyboardButton("Personal data", callback_data=f"report_reason:{username}:personal_data")],
-            [InlineKeyboardButton("Terrorism", callback_data=f"report_reason:{username}:fake")],
-            [InlineKeyboardButton("Scam or spam", callback_data=f"report_reason:{username}:spam")],
-            [InlineKeyboardButton("Copyright", callback_data=f"report_reason:{username}:copyright")],
-            [InlineKeyboardButton("Other", callback_data=f"report_reason:{username}:other")]
-        ]
-        
-        await message.reply(
-            f"⚠️ Select a reason to report {username}:",
-            reply_markup=InlineKeyboardMarkup(buttons)
-        )
-
+    await message.reply(
+        f"⚠️ Select a reason to report {username}:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 # 🎯 Report Handler (User clicks a reason)
-@bot.on_callback_query(filters.regex("^report_reason:"))
+@bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
-    global userbot
+    global userbots
 
-    if not userbot:
+    if not userbots:
+        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
+
+    data = callback_query.data.split(":")
+    
+    if len(data) < 3:
+        return
+
+    username = data[1]
+    reason_code = data[2]
+
+    reason_mapping = {
+        "spam": InputReportReasonSpam(),
+        "violence": InputReportReasonViolence(),
+        "child_abuse": InputReportReasonChildAbuse(),
+        "porn": InputReportReasonPornography(),
+        "copyright": InputReportReasonCopyright(),
+        "fake": InputReportReasonFake(),
+        "illegal_goods": InputReportReasonIllegalDrugs(),
+        "personal_data": InputReportReasonPersonalDetails(),
+        "other": InputReportReasonOther()
+    }
+
+    reason = reason_mapping.get(reason_code, InputReportReasonOther())
+
+    # 🎯 Choose number of reports
+    buttons = [
+        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
+        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
+        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
+        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
+    ]
+
+    await callback_query.message.edit_text(
+        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+# 🎯 Bulk Report Handler
+@bot.on_callback_query(filters.regex("^sendreport:"))
+async def send_bulk_reports(client, callback_query):
+    global userbots
+
+    if not userbots:
         return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
 
     data = callback_query.data.split(":")
@@ -163,9 +170,9 @@ async def handle_report(client, callback_query):
     if len(data) < 4:
         return
 
-    identifier = data[1]  # Either username or chat_id
-    message_id = int(data[2]) if len(data) > 2 else None
-    reason_code = data[3]
+    username = data[1]
+    reason_code = data[2]
+    count = int(data[3])
 
     reason_mapping = {
         "spam": InputReportReasonSpam(),
@@ -181,68 +188,19 @@ async def handle_report(client, callback_query):
 
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
-    # After selecting the reason, ask for the number of reports
-    report_buttons = [
-        [InlineKeyboardButton("10", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:10")],
-        [InlineKeyboardButton("100", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:100")],
-        [InlineKeyboardButton("500", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:500")],
-        [InlineKeyboardButton("999", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:999")],
-        [InlineKeyboardButton("Other", callback_data=f"report_count:{identifier}:{message_id}:{reason_code}:other")]
-    ]
+    try:
+        for userbot in userbots:
+            entity = await userbot.get_users(username)
+            peer = await userbot.resolve_peer(entity.id)
 
-    await callback_query.message.edit_text(
-        f"⚠️ How many reports would you like to send for {reason_code.replace('_', ' ').title()}?",
-        reply_markup=InlineKeyboardMarkup(report_buttons)
-    )
-
-
-# 🎯 Handle report count (User clicks the report count)
-@bot.on_callback_query(filters.regex("^report_count:"))
-async def handle_report_count(client, callback_query):
-    global userbot
-
-    if not userbot:
-        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
-
-    data = callback_query.data.split(":")
-    if len(data) < 5:
-        return
-
-    identifier = data[1]  # Either username or chat_id
-    message_id = int(data[2]) if len(data) > 2 else None
-    reason_code = data[3]
-    count = int(data[4])
-
-    reason_mapping = {
-        "spam": InputReportReasonSpam(),
-        "violence": InputReportReasonViolence(),
-        "child_abuse": InputReportReasonChildAbuse(),
-        "porn": InputReportReasonPornography(),
-        "copyright": InputReportReasonCopyright(),
-        "fake": InputReportReasonFake(),
-        "illegal_goods": InputReportReasonIllegalDrugs(),
-        "personal_data": InputReportReasonPersonalDetails(),
-        "other": InputReportReasonOther()
-    }
-
-    reason = reason_mapping.get(reason_code, InputReportReasonOther())
-
-    # Sending the reports in a loop
-    for _ in range(count):
-        try:
-            if message_id:  # Reporting a specific message
-                peer = await userbot.resolve_peer(identifier)
+            for i in range(count):
                 await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-            
-            else:  # Reporting a user
-                entity = await userbot.get_users(identifier)
-                peer = await userbot.resolve_peer(entity.id)
-                await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-        except Exception as e:
-            logging.error(f"Error reporting: {e}")
-            await callback_query.answer("⚠️ Failed to report.", show_alert=True)
-            return
+                await asyncio.sleep(0.5)  
 
-    await callback_query.message.edit_text(f"✅ Successfully reported {count} times for {reason_code.replace('_', ' ').title()}!")
+        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
+
+    except Exception as e:
+        logging.error(f"Error reporting user: {e}")
+        await callback_query.answer("⚠️ Failed to send reports.", show_alert=True)
 
 bot.run()
