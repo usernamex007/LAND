@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time  # Import time module
+from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -76,7 +77,7 @@ async def add_session(client, message):
         await userbot.start()
 
         # Use invoke() to send Ping request
-        await userbot.invoke(raw.functions.Ping(ping_id=0))
+        await userbot.invoke(functions.Ping(ping_id=0))
 
         # Optional: wait a bit after sending ping
         await asyncio.sleep(1)
@@ -86,8 +87,6 @@ async def add_session(client, message):
     except Exception as e:
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
-
-
 
 
 # 🎯 Report Command (User chooses a reason)
