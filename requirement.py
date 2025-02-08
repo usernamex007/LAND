@@ -1,4 +1,4 @@
-pyrogram.storage
+pyrogram
 logging
 asyncio
 pyrogram
