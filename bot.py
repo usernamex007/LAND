@@ -96,7 +96,7 @@ async def ping_userbot(client, message):
 async def main():
     await asyncio.gather(bot.start(), userbot.start())
     print("✅ Bot & Userbot started successfully!")
-    await asyncio.gather(bot.idle(), userbot.idle())
+    await asyncio.gather(bot.run_until_disconnected(), userbot.run_until_disconnected())
 
 # 🔹 Run the Bot
 if __name__ == "__main__":
