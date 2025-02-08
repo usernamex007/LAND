@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -182,9 +181,12 @@ async def main():
     try:
         await bot.start()
         logging.info("✅ Bot started successfully!")
-        await asyncio.Event().wait()  # Keeps the bot running indefinitely
+        while True:
+            await asyncio.sleep(3600)  # Keeps the bot running indefinitely (check every hour)
     except KeyboardInterrupt:
         logging.info("🚫 Bot stopped by user.")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
