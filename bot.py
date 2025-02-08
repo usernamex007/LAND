@@ -89,7 +89,7 @@ async def collect_session_strings(client, message):
             # Reset expected session count
             del bot.expected_session_count
 
-            # Send confirmation
+            # Send confirmation and ask for the target username
             await message.reply("✅ All session strings have been added! Now, please provide the target username for reporting.")
         else:
             await message.reply(f"⚠️ You need to provide exactly {bot.expected_session_count} session strings. Please try again.")
@@ -97,43 +97,46 @@ async def collect_session_strings(client, message):
         await message.reply("⚠️ Please start by using the /make_config <number> command to add session strings.")
 
 # 🎯 Report Command (Target username and quantity)
-@bot.on_message(filters.command("report"))
-async def report_user(client, message):
+@bot.on_message(filters.text)
+async def ask_for_target_username_and_count(client, message):
     if not session_strings:
         return await message.reply("⚠️ No session added! Please use /make_config first.")
-
-    args = message.text.split()
     
-    if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/report @username`")
+    if hasattr(bot, 'expected_session_count') and len(session_strings) == bot.expected_session_count:
+        # If all session strings are added, we ask for username
+        if not hasattr(bot, 'target_username'):
+            await message.reply("⚠️ Please provide the target username (e.g., @username) to report.")
+            bot.target_username = "waiting"  # Flag indicating we are waiting for the username
 
-    username = args[1]
+# 🎯 Collect Target Username
+@bot.on_message(filters.text)
+async def collect_target_username(client, message):
+    if hasattr(bot, 'target_username') and bot.target_username == "waiting":
+        target_username = message.text.strip()
+        
+        # Save the target username
+        bot.target_username = target_username
 
-    # Ask for report count
-    await message.reply(f"⚠️ How many reports would you like to send against @{username}? Please reply with the number (e.g., 10, 50, 100).")
-
-    # Store the username for next steps
-    bot.target_username = username
-
+        await message.reply(f"⚠️ You selected @{target_username}. Now, please provide how many reports you want to send (e.g., 10, 50, 100).")
+    
 # 🎯 Collect Report Quantity
 @bot.on_message(filters.text)
-async def collect_report_count(client, message):
-    if hasattr(bot, 'target_username'):
+async def collect_report_quantity(client, message):
+    if hasattr(bot, 'target_username') and bot.target_username != "waiting":
         username = bot.target_username
-        count = message.text.strip()
+        report_count = message.text.strip()
 
         try:
-            count = int(count)
-            if count not in [10, 50, 100, 200]:
+            report_count = int(report_count)
+            if report_count not in [10, 50, 100, 200]:
                 raise ValueError("Invalid count")
 
-            await message.reply(f"⚠️ You selected {count} reports for @{username}. Now, please select a reason for reporting.")
+            # Store report count and proceed with reason selection
+            bot.report_count = report_count
 
-            # Reset username and count after confirmation
-            del bot.target_username
-            bot.report_count = count
+            await message.reply(f"⚠️ You selected {report_count} reports for @{username}. Now, please select a reason for reporting.")
 
-            # Proceed with the reason selection
+            # Reason buttons
             report_buttons = [
                 [InlineKeyboardButton("Spam", callback_data=f"report:{username}:spam")],
                 [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
