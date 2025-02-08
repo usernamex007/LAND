@@ -96,11 +96,14 @@ async def main():
         await bot.stop()
         logging.info("✅ Bot stopped successfully!")
 
+# ✅ Properly Handle Event Loop
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
+    loop = asyncio.get_event_loop()
+
     try:
-        loop.run_until_complete(main())  # Correct way to run async functions
+        loop.run_until_complete(main())  
     except KeyboardInterrupt:
         logging.info("❌ Bot manually stopped.")
+        loop.run_until_complete(bot.stop())
+        if userbot:
+            loop.run_until_complete(userbot.stop())
