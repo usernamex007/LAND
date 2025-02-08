@@ -53,6 +53,7 @@ async def help_command(client, update):
     else:
         await update.reply(help_text)
 
+
 # 🎯 Add Session Command
 @bot.on_message(filters.command("addsession"))
 async def add_session(client, message):
@@ -74,8 +75,8 @@ async def add_session(client, message):
         # Starting the userbot session asynchronously
         await userbot.start()
 
-        # Ping command to synchronize time
-        await userbot.send(raw.functions.Ping(ping_id=0))
+        # Use invoke() to send Ping request
+        await userbot.invoke(raw.functions.Ping(ping_id=0))
 
         # Optional: wait a bit after sending ping
         await asyncio.sleep(1)
@@ -85,6 +86,9 @@ async def add_session(client, message):
     except Exception as e:
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
+
+
+
 
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
