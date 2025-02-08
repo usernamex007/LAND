@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.raw import functions
 from pyrogram.raw.functions.account import ReportPeer
 from pyrogram.raw.types import (
     InputReportReasonOther, InputReportReasonSpam, InputReportReasonViolence,
@@ -44,10 +44,9 @@ async def help_command(client, update):
 1️⃣ Use `/addsession <session_string>` to add a session.
 2️⃣ Use `/report @username` to report a user or `/report <message_link>` to report a specific message.
 3️⃣ Select a reason for reporting from the buttons.
-4️⃣ After selecting the reason, choose the number of reports to send (10, 100, 500, etc.).
-5️⃣ Reports will be sent automatically.
+4️⃣ Reports will be sent automatically.
 
-✅ You can send multiple reports at once!
+✅ You can send multiple reports like 10, 50, 100, or 200 at once!
 """
     if isinstance(update, filters.callback_query):
         await update.message.edit_text(help_text)
@@ -109,16 +108,16 @@ async def report_user(client, message):
             message_id = int(link_parts[4])  # Message ID
 
             buttons = [
-                [InlineKeyboardButton("I don't like it", callback_data=f"report:{chat_id}:{message_id}:other")],
-                [InlineKeyboardButton("Child abuse", callback_data=f"report:{chat_id}:{message_id}:child_abuse")],
-                [InlineKeyboardButton("Violence", callback_data=f"report:{chat_id}:{message_id}:violence")],
-                [InlineKeyboardButton("Illegal goods", callback_data=f"report:{chat_id}:{message_id}:illegal_goods")],
-                [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{chat_id}:{message_id}:porn")],
-                [InlineKeyboardButton("Personal data", callback_data=f"report:{chat_id}:{message_id}:personal_data")],
-                [InlineKeyboardButton("Terrorism", callback_data=f"report:{chat_id}:{message_id}:fake")],
-                [InlineKeyboardButton("Scam or spam", callback_data=f"report:{chat_id}:{message_id}:spam")],
-                [InlineKeyboardButton("Copyright", callback_data=f"report:{chat_id}:{message_id}:copyright")],
-                [InlineKeyboardButton("Other", callback_data=f"report:{chat_id}:{message_id}:other")]
+                [InlineKeyboardButton("I don't like it", callback_data=f"report_reason:{chat_id}:{message_id}:other")],
+                [InlineKeyboardButton("Child abuse", callback_data=f"report_reason:{chat_id}:{message_id}:child_abuse")],
+                [InlineKeyboardButton("Violence", callback_data=f"report_reason:{chat_id}:{message_id}:violence")],
+                [InlineKeyboardButton("Illegal goods", callback_data=f"report_reason:{chat_id}:{message_id}:illegal_goods")],
+                [InlineKeyboardButton("Illegal adult content", callback_data=f"report_reason:{chat_id}:{message_id}:porn")],
+                [InlineKeyboardButton("Personal data", callback_data=f"report_reason:{chat_id}:{message_id}:personal_data")],
+                [InlineKeyboardButton("Terrorism", callback_data=f"report_reason:{chat_id}:{message_id}:fake")],
+                [InlineKeyboardButton("Scam or spam", callback_data=f"report_reason:{chat_id}:{message_id}:spam")],
+                [InlineKeyboardButton("Copyright", callback_data=f"report_reason:{chat_id}:{message_id}:copyright")],
+                [InlineKeyboardButton("Other", callback_data=f"report_reason:{chat_id}:{message_id}:other")]
             ]
 
             await message.reply(
@@ -133,16 +132,16 @@ async def report_user(client, message):
         username = input_data
 
         buttons = [
-            [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
-            [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
-            [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
-            [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
-            [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
-            [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
-            [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
-            [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
-            [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
-            [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+            [InlineKeyboardButton("I don't like it", callback_data=f"report_reason:{username}:other")],
+            [InlineKeyboardButton("Child abuse", callback_data=f"report_reason:{username}:child_abuse")],
+            [InlineKeyboardButton("Violence", callback_data=f"report_reason:{username}:violence")],
+            [InlineKeyboardButton("Illegal goods", callback_data=f"report_reason:{username}:illegal_goods")],
+            [InlineKeyboardButton("Illegal adult content", callback_data=f"report_reason:{username}:porn")],
+            [InlineKeyboardButton("Personal data", callback_data=f"report_reason:{username}:personal_data")],
+            [InlineKeyboardButton("Terrorism", callback_data=f"report_reason:{username}:fake")],
+            [InlineKeyboardButton("Scam or spam", callback_data=f"report_reason:{username}:spam")],
+            [InlineKeyboardButton("Copyright", callback_data=f"report_reason:{username}:copyright")],
+            [InlineKeyboardButton("Other", callback_data=f"report_reason:{username}:other")]
         ]
         
         await message.reply(
@@ -150,8 +149,9 @@ async def report_user(client, message):
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
+
 # 🎯 Report Handler (User clicks a reason)
-@bot.on_callback_query(filters.regex("^report:"))
+@bot.on_callback_query(filters.regex("^report_reason:"))
 async def handle_report(client, callback_query):
     global userbot
 
@@ -194,6 +194,7 @@ async def handle_report(client, callback_query):
         f"⚠️ How many reports would you like to send for {reason_code.replace('_', ' ').title()}?",
         reply_markup=InlineKeyboardMarkup(report_buttons)
     )
+
 
 # 🎯 Handle report count (User clicks the report count)
 @bot.on_callback_query(filters.regex("^report_count:"))
@@ -243,9 +244,5 @@ async def handle_report_count(client, callback_query):
             return
 
     await callback_query.message.edit_text(f"✅ Successfully reported {count} times for {reason_code.replace('_', ' ').title()}!")
-# 🎯 Ping Command
-@bot.on_message(filters.command("ping"))
-async def ping(client, message):
-    await message.reply("🏓 Pong! The bot is active.")
 
 bot.run()
