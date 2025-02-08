@@ -1,12 +1,10 @@
 import asyncio
 import logging
-import signal
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import re
 
 # Logging setup
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Bot configuration
 API_ID = 23120489  
@@ -14,7 +12,6 @@ API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
 BOT_TOKEN = "7984449177:AAEjwcdh-OlUhJ5E_L26jSZfmCPFDuNK7d4"
 
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-userbot = None
 
 # Start command
 @bot.on_message(filters.command("start"))
@@ -25,7 +22,6 @@ async def start_command(client, message):
     await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.", reply_markup=buttons)
 
 # Help command
-@bot.on_callback_query(filters.regex("^help$"))
 @bot.on_message(filters.command("help"))
 async def help_command(client, message):
     help_text = """
@@ -57,14 +53,14 @@ async def add_session(client, message):
 
         userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
         await userbot.start()
-        
+
         await message.reply("✅ Session added successfully! Now you can use /report.")
     
     except Exception as e:
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
 
-# Report command (User chooses a reason)
+# Report command
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
     args = message.text.split()
@@ -94,7 +90,7 @@ async def report_user(client, message):
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# Message link handling
+# Handle message link reporting
 async def handle_message_link(message, link):
     global userbot
 
@@ -123,66 +119,19 @@ async def handle_message_link(message, link):
         logging.error(f"Error fetching message: {e}")
         await message.reply("⚠️ Failed to fetch message.")
 
-# Bulk report handler
-@bot.on_callback_query(filters.regex("^reportmsg:|^report:"))
-async def send_bulk_reports(client, callback_query):
-    global userbot
-
-    if not userbot:
-        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
-
-    data = callback_query.data.split(":")
-    
-    if "reportmsg" in data[0]:
-        chat_id, message_id, reason_code = data[1], int(data[2]), data[3]
-    else:
-        target, reason_code = data[1], data[2]
-
-    reason_mapping = {
-        "spam": "Spam",
-        "violence": "Violence",
-        "child_abuse": "Child Abuse",
-        "porn": "Adult Content",
-        "copyright": "Copyright",
-        "fake": "Terrorism",
-        "illegal_goods": "Illegal Goods",
-        "personal_data": "Personal Data",
-        "other": "Other"
-    }
-
-    reason = reason_mapping.get(reason_code, "Other")
-
-    buttons = [
-        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{callback_query.data}:10")],
-        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{callback_query.data}:50")],
-        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{callback_query.data}:100")],
-        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{callback_query.data}:200")]
-    ]
-
-    await callback_query.message.edit_text(
-        f"✅ Selected reason: {reason}\n\nSelect number of reports to send:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
-
 # Ping command
 @bot.on_message(filters.command("ping"))
 async def ping(client, message):
     await message.reply("🏓 Pong! The bot is active.")
 
-# Graceful shutdown function
+# Main function
 async def main():
     try:
         await bot.start()
         logging.info("✅ Bot started successfully!")
-        
-        # Use a signal handler to gracefully shutdown
-        loop = asyncio.get_event_loop()
-        loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(bot.stop()))
 
         # Keep the bot alive
         await asyncio.Event().wait()
-    except KeyboardInterrupt:
-        logging.info("🚫 Bot stopped by user.")
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
 
