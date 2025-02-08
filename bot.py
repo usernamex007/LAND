@@ -68,20 +68,24 @@ async def add_session(client, message):
         if userbot:
             await userbot.stop()
 
+        # Creating a new userbot session
         userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
+        
+        # Starting the userbot session asynchronously
         await userbot.start()
 
-        # Wait for a second before syncing the time
-        time.sleep(1)  # Adding a short delay to avoid sync issues
+        # Ping command to synchronize time
+        await userbot.send(raw.functions.Ping(ping_id=0))
 
-        # Sync the time after starting the userbot
-        await userbot.sync()  # Synchronizes client time with Telegram servers
-        
+        # Optional: wait a bit after sending ping
+        await asyncio.sleep(1)
+
         await message.reply("✅ Session added successfully! Now you can use /report.")
     
     except Exception as e:
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
+
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
