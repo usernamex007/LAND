@@ -13,7 +13,7 @@ from pyrogram.raw.types import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # 🛠 Configuration
-API_ID = 28795512  # अपना API_ID डालें
+API_ID = 28795512  
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
 BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"
 
@@ -36,8 +36,9 @@ async def help_command(client, message):
 1️⃣ Use `/addsession <session_string>` to add a session.
 2️⃣ Use `/report @username` to report a user.
 3️⃣ Select a reason for reporting from the buttons.
+4️⃣ Select the number of reports to send.
 
-✅ Once a session is added, reports will be sent using the user session.
+✅ You can send multiple reports like 10, 50, 100, or 200 at once!
 """
     await message.reply(help_text)
 
@@ -53,11 +54,9 @@ async def add_session(client, message):
     session_string = args[1]
 
     try:
-        # Existing userbot को पहले रोकें
         if userbot:
             await userbot.stop()
 
-        # नया userbot शुरू करें
         userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
         await userbot.start()
         
@@ -77,7 +76,6 @@ async def report_user(client, message):
 
     username = args[1]
 
-    # 🎯 Generate buttons for report reasons
     buttons = [
         [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
         [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
@@ -96,7 +94,7 @@ async def report_user(client, message):
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# 🎯 Report Handler (User clicks a button)
+# 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query()
 async def handle_report(client, callback_query):
     global userbot
@@ -112,7 +110,50 @@ async def handle_report(client, callback_query):
     username = data[1]
     reason_code = data[2]
 
-    # 🎯 Mapping report reasons
+    reason_mapping = {
+        "spam": InputReportReasonSpam(),
+        "violence": InputReportReasonViolence(),
+        "child_abuse": InputReportReasonChildAbuse(),
+        "porn": InputReportReasonPornography(),
+        "copyright": InputReportReasonCopyright(),
+        "fake": InputReportReasonFake(),
+        "illegal_goods": InputReportReasonIllegalDrugs(),
+        "personal_data": InputReportReasonPersonalDetails(),
+        "other": InputReportReasonOther()
+    }
+
+    reason = reason_mapping.get(reason_code, InputReportReasonOther())
+
+    # 🎯 Choose number of reports
+    buttons = [
+        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
+        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
+        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
+        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
+    ]
+
+    await callback_query.message.edit_text(
+        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+# 🎯 Bulk Report Handler
+@bot.on_callback_query(filters.regex("^sendreport:"))
+async def send_bulk_reports(client, callback_query):
+    global userbot
+
+    if not userbot:
+        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
+
+    data = callback_query.data.split(":")
+    
+    if len(data) < 4:
+        return
+
+    username = data[1]
+    reason_code = data[2]
+    count = int(data[3])
+
     reason_mapping = {
         "spam": InputReportReasonSpam(),
         "violence": InputReportReasonViolence(),
@@ -128,42 +169,15 @@ async def handle_report(client, callback_query):
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
     try:
-        # 🎯 Get user details
         entity = await userbot.get_users(username)
         peer = await userbot.resolve_peer(entity.id)
 
-        # 🎯 Report user
-        await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-        await callback_query.message.edit_text(f"✅ Successfully reported {username} for {reason_code.replace('_', ' ').title()}.")
+        for i in range(count):
+            await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
+            await asyncio.sleep(0.5)  # Telegram API limit को bypass करने के लिए 
+
+        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
-        await callback_query.answer("⚠️ Failed to report user.", show_alert=True)
-
-# 🎯 Start Bot Properly Without asyncio.run()
-async def main():
-    await bot.start()
-    logging.info("✅ Bot started successfully!")
-
-    try:
-        await asyncio.Event().wait()  # Keeps bot running
-    except asyncio.CancelledError:
-        logging.info("❌ Stopping Bot...")
-
-    finally:
-        if userbot:
-            await userbot.stop()
-        await bot.stop()
-        logging.info("✅ Bot stopped successfully!")
-
-# ✅ Properly Handle Event Loop
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-
-    try:
-        loop.run_until_complete(main())  
-    except KeyboardInterrupt:
-        logging.info("❌ Bot manually stopped.")
-        loop.run_until_complete(bot.stop())
-        if userbot:
-            loop.run_until_complete(userbot.stop())
+        await callback_query.answer("⚠️ Failed to send reports.", show_alert=True)
