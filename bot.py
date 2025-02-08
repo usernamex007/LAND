@@ -7,7 +7,7 @@ from pyrogram.raw.types import InputReportReasonSpam
 # 📌 Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# 🛠 Configuration (अपने API_ID, API_HASH, BOT_TOKEN & USERBOT_SESSION डालें)
+# 🛠 Configuration
 API_ID = 28795512  
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
 BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"
@@ -17,17 +17,7 @@ USERBOT_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=USERBOT_SESSION)
 
-# 🎯 Bot Ping Command
-@bot.on_message(filters.command("ping"))
-async def bot_ping(client, message):
-    await message.reply("✅ Bot is Running!")
-
-# 🎯 Userbot Ping Command
-@userbot.on_message(filters.command("ping", prefixes=".") & filters.me)
-async def userbot_ping(client, message):
-    await message.reply("✅ Userbot is Running!")
-
-# 🎯 Report System (Userbot Reports)
+# 🎯 Report System
 @bot.on_message(filters.command("report"))
 @userbot.on_message(filters.command("report", prefixes="/") & filters.me)
 async def report_user(client, message):
@@ -40,10 +30,19 @@ async def report_user(client, message):
         reason = args[2].lower()
 
         # 🎯 Get user details
-        entity = await userbot.get_users(username)
+        try:
+            entity = await userbot.get_users(username)
+        except Exception:
+            return await message.reply("❌ Invalid Username or User not found.")
+
         logging.info(f"✅ Entity Found: {entity}")
 
-        peer = await userbot.resolve_peer(entity.id)
+        # 🎯 Resolve Peer Safely
+        try:
+            peer = await userbot.resolve_peer(entity.id)
+        except Exception:
+            return await message.reply("❌ Could not resolve user. Make sure bot is in the group/channel.")
+
         logging.info(f"✅ Peer Resolved: {peer}")
 
         # 🎯 Report user
@@ -61,7 +60,7 @@ async def main():
     logging.info("✅ Bot & Userbot started successfully!")
 
     try:
-        await asyncio.Future()  # बॉट को रनिंग रखने के लिए
+        await asyncio.Future()
     except asyncio.CancelledError:
         logging.info("❌ Stopping Bot & Userbot...")
         await bot.stop()
