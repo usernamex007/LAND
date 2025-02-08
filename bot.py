@@ -80,24 +80,27 @@ async def report_user(client, message):
         logging.error(f"Error: {e}")
         await message.reply(f"⚠️ Failed to report. Error: {e}")
 
-# 🎯 Start Bot
+# 🎯 Start Bot Properly Without asyncio.run()
 async def main():
     await bot.start()
     logging.info("✅ Bot started successfully!")
 
     try:
-        await asyncio.Future()  # Keeps bot running
+        await asyncio.Event().wait()  # Keeps bot running
     except asyncio.CancelledError:
         logging.info("❌ Stopping Bot...")
 
     finally:
-        await bot.stop()
         if userbot:
             await userbot.stop()
+        await bot.stop()
         logging.info("✅ Bot stopped successfully!")
 
 if __name__ == "__main__":
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main())  # Correct way to run async functions
     except KeyboardInterrupt:
         logging.info("❌ Bot manually stopped.")
