@@ -13,11 +13,9 @@ from pyrogram.raw.types import (
 # 📌 Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-
-
 # 🛠 Configuration
-API_ID = 23120489  
-API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
+API_ID = 28795512  
+API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
 BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 
 # 🎯 Bot Client
@@ -30,7 +28,8 @@ userbot = None
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
     buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📖 Help", callback_data="help")]
+        [InlineKeyboardButton("📖 Help", callback_data="help")],
+        [InlineKeyboardButton("Ping", callback_data="ping")]
     ])
     await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.", reply_markup=buttons)
 
@@ -173,6 +172,11 @@ async def send_bulk_reports(client, callback_query):
         f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
+
+# 🎯 Ping Command
+@bot.on_callback_query(filters.regex("^ping$"))
+async def ping_command(client, callback_query):
+    await callback_query.answer("Pong! The bot is working fine.", show_alert=True)
 
 # 🎯 Start Bot Properly
 async def main():
