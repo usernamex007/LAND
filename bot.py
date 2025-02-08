@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -13,7 +14,7 @@ from pyrogram.raw.types import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # 🛠 Configuration
-API_ID = 23120489
+API_ID = 23120489  
 API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
 BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 
@@ -23,34 +24,29 @@ bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 # 🔹 Userbot session storage
 userbot = None
 
-# 🎯 Start Command
+# 🎯 Start Command with Help Button
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    welcome_text = "👋 Welcome! Use /addsession <session_string> to add a session."
-    buttons = [[InlineKeyboardButton("❓ Help", callback_data="show_help")]]
-    
-    await message.reply(
-        welcome_text,
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    buttons = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📖 Help", callback_data="help")]
+    ])
+    await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.", reply_markup=buttons)
 
-# 🎯 Help Command (Button Click or /help)
+# 🎯 Help Command
+@bot.on_callback_query(filters.regex("^help$"))
 @bot.on_message(filters.command("help"))
-@bot.on_callback_query(filters.regex("^show_help$"))
-async def help_command(client, update):
+async def help_command(client, message):
     help_text = """
 📌 *How to use this bot:*
 1️⃣ Use `/addsession <session_string>` to add a session.
 2️⃣ Use `/report @username` to report a user.
-3️⃣ Select a reason for reporting from the buttons.
-4️⃣ Reports will be sent automatically.
+3️⃣ Use `/report <message_link>` to report a specific message.
+4️⃣ Select a reason for reporting from the buttons.
+5️⃣ Select the number of reports to send (10, 50, 100, 200).
 
-✅ You can send multiple reports like 10, 50, 100, or 200 at once!
+✅ The bot will notify you when reports are successfully sent.
 """
-    if isinstance(update, filters.callback_query):
-        await update.message.edit_text(help_text)
-    else:
-        await update.reply(help_text)
+    await message.reply(help_text)
 
 # 🎯 Add Session Command
 @bot.on_message(filters.command("addsession"))
@@ -80,75 +76,63 @@ async def add_session(client, message):
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
     args = message.text.split()
-    
-    if len(args) < 2:
-        return await message.reply("⚠️ Usage: `/report @username`")
 
-    username = args[1]
+    if len(args) < 2:
+        return await message.reply("⚠️ Usage: `/report @username` or `/report <message_link>`")
+
+    target = args[1]
+
+    if "t.me/" in target:
+        return await handle_message_link(message, target)
 
     buttons = [
-        [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
-        [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
-        [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
-        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
-        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
-        [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
-        [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
-        [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
-        [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
-        [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+        [InlineKeyboardButton("Spam", callback_data=f"report:{target}:spam")],
+        [InlineKeyboardButton("Child abuse", callback_data=f"report:{target}:child_abuse")],
+        [InlineKeyboardButton("Violence", callback_data=f"report:{target}:violence")],
+        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{target}:illegal_goods")],
+        [InlineKeyboardButton("Adult content", callback_data=f"report:{target}:porn")],
+        [InlineKeyboardButton("Personal data", callback_data=f"report:{target}:personal_data")],
+        [InlineKeyboardButton("Terrorism", callback_data=f"report:{target}:fake")],
+        [InlineKeyboardButton("Copyright", callback_data=f"report:{target}:copyright")],
+        [InlineKeyboardButton("Other", callback_data=f"report:{target}:other")]
     ]
-    
+
     await message.reply(
-        f"⚠️ Select a reason to report {username}:",
+        f"⚠️ Select a reason to report {target}:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# 🎯 Report Handler (User clicks a reason)
-@bot.on_callback_query(filters.regex("^report:"))
-async def handle_report(client, callback_query):
+# 🎯 Message Link Handling
+async def handle_message_link(message, link):
     global userbot
 
     if not userbot:
-        return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
+        return await message.reply("⚠️ No session added! Use /addsession first.")
 
-    data = callback_query.data.split(":")
-    
-    if len(data) < 3:
-        return
+    match = re.search(r"t.me/([^/]+)/(\d+)", link)
+    if not match:
+        return await message.reply("⚠️ Invalid message link format.")
 
-    username = data[1]
-    reason_code = data[2]
+    chat_username, message_id = match.groups()
 
-    reason_mapping = {
-        "spam": InputReportReasonSpam(),
-        "violence": InputReportReasonViolence(),
-        "child_abuse": InputReportReasonChildAbuse(),
-        "porn": InputReportReasonPornography(),
-        "copyright": InputReportReasonCopyright(),
-        "fake": InputReportReasonFake(),
-        "illegal_goods": InputReportReasonIllegalDrugs(),
-        "personal_data": InputReportReasonPersonalDetails(),
-        "other": InputReportReasonOther()
-    }
+    try:
+        chat = await userbot.get_chat(chat_username)
+        buttons = [
+            [InlineKeyboardButton("Spam", callback_data=f"reportmsg:{chat.id}:{message_id}:spam")],
+            [InlineKeyboardButton("Child abuse", callback_data=f"reportmsg:{chat.id}:{message_id}:child_abuse")],
+            [InlineKeyboardButton("Violence", callback_data=f"reportmsg:{chat.id}:{message_id}:violence")]
+        ]
 
-    reason = reason_mapping.get(reason_code, InputReportReasonOther())
-
-    # 🎯 Choose number of reports
-    buttons = [
-        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
-        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
-        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
-        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
-    ]
-
-    await callback_query.message.edit_text(
-        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+        await message.reply(
+            "⚠️ Select a reason to report this message:",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+    except Exception as e:
+        logging.error(f"Error fetching message: {e}")
+        await message.reply("⚠️ Failed to fetch message.")
 
 # 🎯 Bulk Report Handler
-@bot.on_callback_query(filters.regex("^sendreport:"))
+@bot.on_callback_query(filters.regex("^reportmsg:|^report:"))
 async def send_bulk_reports(client, callback_query):
     global userbot
 
@@ -157,12 +141,10 @@ async def send_bulk_reports(client, callback_query):
 
     data = callback_query.data.split(":")
     
-    if len(data) < 4:
-        return
-
-    username = data[1]
-    reason_code = data[2]
-    count = int(data[3])
+    if "reportmsg" in data[0]:
+        chat_id, message_id, reason_code = data[1], int(data[2]), data[3]
+    else:
+        target, reason_code = data[1], data[2]
 
     reason_mapping = {
         "spam": InputReportReasonSpam(),
@@ -178,18 +160,23 @@ async def send_bulk_reports(client, callback_query):
 
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
-    try:
-        entity = await userbot.get_users(username)
-        peer = await userbot.resolve_peer(entity.id)
+    buttons = [
+        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{callback_query.data}:10")],
+        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{callback_query.data}:50")],
+        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{callback_query.data}:100")],
+        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{callback_query.data}:200")]
+    ]
 
-        for i in range(count):
-            await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-            await asyncio.sleep(0.5)  
+    await callback_query.message.edit_text(
+        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
-        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
+# 🎯 Start Bot Properly
+async def main():
+    await bot.start()
+    logging.info("✅ Bot started successfully!")
+    await asyncio.Event().wait()
 
-    except Exception as e:
-        logging.error(f"Error reporting user: {e}")
-        await callback_query.answer("⚠️ Failed to send reports.", show_alert=True)
-
-bot.run()
+if __name__ == "__main__":
+    asyncio.run(main())
