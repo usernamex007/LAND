@@ -138,12 +138,15 @@ async def handle_report(client, callback_query):
     )
 
 # 🎯 Bulk Report Handler
-@bot.on_callback_query(filters.regex("^sendreport:"))
+@bot.on_callback_query()
 async def send_bulk_reports(client, callback_query):
     global userbot
 
-    if not userbot:
+    if not userbot or not userbot.is_connected:
         return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
+
+    if not callback_query.data.startswith("sendreport:"):
+        return
 
     data = callback_query.data.split(":")
     
@@ -174,10 +177,12 @@ async def send_bulk_reports(client, callback_query):
 
         for i in range(count):
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-            await asyncio.sleep(0.5)  # Telegram API limit को bypass करने के लिए 
+            await asyncio.sleep(1.5)  # Telegram API Limit Handling
 
         await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
         await callback_query.answer("⚠️ Failed to send reports.", show_alert=True)
+
+bot.run()
