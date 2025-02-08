@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # 🛠 Configuration
 API_ID = 23120489
 API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
-BOT_TOKEN = "7984449177:AAEjwcdh-OlUhJ5E_L26jSZfmCPFDuNK7d4"
+BOT_TOKEN = "7782975743:AAGuVZ4Ip9mk8DwUtYYLb8nYD1T4PHugkDU"
 
 # 📂 SQLite Database setup
 conn = sqlite3.connect('bot_config.db')
