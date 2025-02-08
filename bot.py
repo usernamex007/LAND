@@ -90,13 +90,13 @@ async def collect_session_strings(client, message):
             del bot.expected_session_count
 
             # Send confirmation
-            await message.reply("✅ All session strings have been added! You can now proceed with reporting.")
+            await message.reply("✅ All session strings have been added! Now, please provide the target username for reporting.")
         else:
             await message.reply(f"⚠️ You need to provide exactly {bot.expected_session_count} session strings. Please try again.")
     else:
         await message.reply("⚠️ Please start by using the /make_config <number> command to add session strings.")
 
-# 🎯 Report Command (User chooses a reason)
+# 🎯 Report Command (Target username and quantity)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
     if not session_strings:
@@ -109,96 +109,61 @@ async def report_user(client, message):
 
     username = args[1]
 
-    buttons = [
-        [InlineKeyboardButton("I don't like it", callback_data=f"report:{username}:other")],
-        [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
-        [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
-        [InlineKeyboardButton("Illegal goods", callback_data=f"report:{username}:illegal_goods")],
-        [InlineKeyboardButton("Illegal adult content", callback_data=f"report:{username}:porn")],
-        [InlineKeyboardButton("Personal data", callback_data=f"report:{username}:personal_data")],
-        [InlineKeyboardButton("Terrorism", callback_data=f"report:{username}:fake")],
-        [InlineKeyboardButton("Scam or spam", callback_data=f"report:{username}:spam")],
-        [InlineKeyboardButton("Copyright", callback_data=f"report:{username}:copyright")],
-        [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
-    ]
-    
-    await message.reply(
-        f"⚠️ Select a reason to report {username}:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    # Ask for report count
+    await message.reply(f"⚠️ How many reports would you like to send against @{username}? Please reply with the number (e.g., 10, 50, 100).")
+
+    # Store the username for next steps
+    bot.target_username = username
+
+# 🎯 Collect Report Quantity
+@bot.on_message(filters.text)
+async def collect_report_count(client, message):
+    if hasattr(bot, 'target_username'):
+        username = bot.target_username
+        count = message.text.strip()
+
+        try:
+            count = int(count)
+            if count not in [10, 50, 100, 200]:
+                raise ValueError("Invalid count")
+
+            await message.reply(f"⚠️ You selected {count} reports for @{username}. Now, please select a reason for reporting.")
+
+            # Reset username and count after confirmation
+            del bot.target_username
+            bot.report_count = count
+
+            # Proceed with the reason selection
+            report_buttons = [
+                [InlineKeyboardButton("Spam", callback_data=f"report:{username}:spam")],
+                [InlineKeyboardButton("Violence", callback_data=f"report:{username}:violence")],
+                [InlineKeyboardButton("Child abuse", callback_data=f"report:{username}:child_abuse")],
+                [InlineKeyboardButton("Other", callback_data=f"report:{username}:other")]
+            ]
+            await message.reply(
+                f"⚠️ Select a reason to report @{username}:",
+                reply_markup=InlineKeyboardMarkup(report_buttons)
+            )
+        except ValueError:
+            await message.reply("⚠️ Please enter a valid number of reports (10, 50, 100, 200).")
 
 # 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
-    global session_strings
+    username = callback_query.data.split(":")[1]
+    reason_code = callback_query.data.split(":")[2]
 
-    if not session_strings:
-        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
+    # Use the stored count from previous step
+    count = bot.report_count  # Set this in the earlier step where you handle report count
 
-    data = callback_query.data.split(":")
-    
-    if len(data) < 3:
-        return
-
-    username = data[1]
-    reason_code = data[2]
-
+    # Map the reason to the correct report reason
     reason_mapping = {
         "spam": InputReportReasonSpam(),
         "violence": InputReportReasonViolence(),
         "child_abuse": InputReportReasonChildAbuse(),
-        "porn": InputReportReasonPornography(),
-        "copyright": InputReportReasonCopyright(),
-        "fake": InputReportReasonFake(),
-        "illegal_goods": InputReportReasonIllegalDrugs(),
-        "personal_data": InputReportReasonPersonalDetails(),
         "other": InputReportReasonOther()
     }
-
-    reason = reason_mapping.get(reason_code, InputReportReasonOther())
-
-    # 🎯 Choose number of reports
-    buttons = [
-        [InlineKeyboardButton("10 Reports", callback_data=f"sendreport:{username}:{reason_code}:10")],
-        [InlineKeyboardButton("50 Reports", callback_data=f"sendreport:{username}:{reason_code}:50")],
-        [InlineKeyboardButton("100 Reports", callback_data=f"sendreport:{username}:{reason_code}:100")],
-        [InlineKeyboardButton("200 Reports", callback_data=f"sendreport:{username}:{reason_code}:200")]
-    ]
-
-    await callback_query.message.edit_text(
-        f"✅ Selected reason: {reason_code.replace('_', ' ').title()}\n\nSelect number of reports to send:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
-
-# 🎯 Bulk Report Handler
-@bot.on_callback_query(filters.regex("^sendreport:"))
-async def send_bulk_reports(client, callback_query):
-    global session_strings
-
-    if not session_strings:
-        return await callback_query.answer("⚠️ No session added! Use /make_config first.", show_alert=True)
-
-    data = callback_query.data.split(":")
     
-    if len(data) < 4:
-        return
-
-    username = data[1]
-    reason_code = data[2]
-    count = int(data[3])
-
-    reason_mapping = {
-        "spam": InputReportReasonSpam(),
-        "violence": InputReportReasonViolence(),
-        "child_abuse": InputReportReasonChildAbuse(),
-        "porn": InputReportReasonPornography(),
-        "copyright": InputReportReasonCopyright(),
-        "fake": InputReportReasonFake(),
-        "illegal_goods": InputReportReasonIllegalDrugs(),
-        "personal_data": InputReportReasonPersonalDetails(),
-        "other": InputReportReasonOther()
-    }
-
     reason = reason_mapping.get(reason_code, InputReportReasonOther())
 
     try:
@@ -215,7 +180,7 @@ async def send_bulk_reports(client, callback_query):
 
             await userbot.stop()
 
-        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
+        await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against @{username} for {reason_code.replace('_', ' ').title()}!")
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
