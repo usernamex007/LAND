@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from pyrogram.raw import functions
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -43,11 +42,9 @@ async def help_command(client, update):
     help_text = """
 📌 *How to use this bot:*
 1️⃣ Use `/addsession <session_string>` to add a session.
-2️⃣ Use `/report @username`, `/report <user_id>`, or `/report <message_link>` to report.
+2️⃣ Use `/report @username`, `/report <user_id>`, or `/report <message_link>` to report a user or message.
 3️⃣ Select a reason for reporting from the buttons.
 4️⃣ Reports will be sent automatically.
-
-✅ You can send multiple reports like 10, 50, 100, or 200 at once!
 """
     if isinstance(update, filters.callback_query):
         await update.message.edit_text(help_text)
@@ -78,9 +75,6 @@ async def add_session(client, message):
         # Use invoke() to send Ping request
         await userbot.invoke(functions.Ping(ping_id=0))
 
-        # Optional: wait a bit after sending ping
-        await asyncio.sleep(1)
-
         await message.reply("✅ Session added successfully! Now you can use /report.")
     
     except Exception as e:
@@ -102,6 +96,9 @@ async def report_user(client, message):
         try:
             # Extracting message ID and chat_id from the message link
             link_parts = input_data.split("/")
+            if len(link_parts) < 5:
+                return await message.reply("⚠️ Invalid message link format.")
+            
             chat_id = link_parts[3]  # Channel/Group username or ID
             message_id = int(link_parts[4])  # Message ID
 
@@ -181,7 +178,7 @@ async def handle_report(client, callback_query):
     if len(data) < 4:
         return
 
-    identifier = data[1]  # Either username, user_id or chat_id
+    identifier = data[1]  # Either username, user_id, or chat_id
     message_id = int(data[2]) if len(data) > 2 else None
     reason_code = data[3]
 
@@ -201,10 +198,11 @@ async def handle_report(client, callback_query):
 
     try:
         if message_id:  # Reporting a specific message
+            # Resolving the peer (group/channel) and reporting the specific message
             peer = await userbot.resolve_peer(identifier)
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
         
-        else:  # Reporting a user or user_id
+        else:  # Reporting a user
             entity = await userbot.get_users(identifier)
             peer = await userbot.resolve_peer(entity.id)
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
