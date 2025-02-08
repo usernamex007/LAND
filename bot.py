@@ -2,53 +2,31 @@ import asyncio
 import logging
 from pyrogram import Client, filters
 from pyrogram.raw.functions.account import ReportPeer
-from pyrogram.raw.types import (
-    InputReportReasonSpam,
-    InputReportReasonFake,
-    InputReportReasonViolence,
-    InputReportReasonPornography,
-    InputReportReasonChildAbuse,
-    InputReportReasonCopyright,
-    InputReportReasonIllegalDrugs,
-    InputReportReasonPersonalDetails
-)
+from pyrogram.raw.types import InputReportReasonSpam
 
-# Enable logging
-logging.basicConfig(level=logging.INFO)
+# 📌 Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# API Credentials
-API_ID = 28795512  # Replace with your API ID
-API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"  # Replace with your API Hash
-BOT_TOKEN = "7854222423:AAENyQ95hobcR_CFGKeDfhrwbH2MU"  # Replace with your Bot Token
-STRING_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy2LX3sBMy5D88nTLf4Qv8srW5AFx0Rec5jUj4hpRmednZkKL7_gXLexaPS-hnSRVYE9gYZHpR68gYEj3TN3a_NStvmW2nLsufUscza6J2awVq2rrQFrUX9_oop5MuAcRYsgWapB0p0pm4Z_FGG3M377ivchaklTcOjqelr0a_SLvFCEFRUT2fd5bnLyyIOulK0nSU1Fo42i0Yej4iVCLZ03c2-pWvPU3WCW5AA5vuEVepGzcBZ7PvlFzQ6VHoLPA3bjtVLZ9i2E-tUdyfQJ_3tHrQ4guD7QObwAAAAGllg0RAA"  # Replace with your String Session
+# 🛠 Configuration
+API_ID = 28795512  # अपना API_ID डालें
+API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
+BOT_TOKEN = "7854222423:AAENyTD0z0UQ95hobcR_CFGKeDfhrwbH2MU"
+USERBOT_SESSION = "AQG3YngADVoLztHlgfxI4gMSX8n5-RbHEuke_OYA6Gtm4girJGg3ZwEBdzHSy2LX3sBMy5D88nTLf4Qv8srW5AFx0Rec5jUj4hpRmednZkKL7_gXLexaPS-hnSRVYE9gYZHpR68gYEj3TN3a_NStvmW2nLsufUscza6J2awVq2rrQFrUX9_oop5MuAcRYsgWapB0p0pm4Z_FGG3M377ivchaklTcOjqelr0a_SLvFCEFRUT2fd5bnLyyIOulK0nSU1Fo42i0Yej4iVCLZ03c2-pWvPU3WCW5AA5vuEVepGzcBZ7PvlFzQ6VHoLPA3bjtVLZ9i2E-tUdyfQJ_3tHrQ4guD7QObwAAAAGllg0RAA"
 
-# Initialize Pyrogram Clients
-bot = Client("report_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=STRING_SESSION)
+# 🎯 Bot & Userbot Clients
+bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=USERBOT_SESSION)
 
-# Report reason mapping
-REPORT_REASONS = {
-    "spam": InputReportReasonSpam(),
-    "fake": InputReportReasonFake(),
-    "violence": InputReportReasonViolence(),
-    "porn": InputReportReasonPornography(),
-    "child_abuse": InputReportReasonChildAbuse(),
-    "copyright": InputReportReasonCopyright(),
-    "drugs": InputReportReasonIllegalDrugs(),
-    "personal_info": InputReportReasonPersonalDetails(),
-}
-
-# 🔹 Ping Command for Bot
+# 🎯 Ping Commands
 @bot.on_message(filters.command("ping"))
-async def ping_bot(client, message):
-    await message.reply_text("✅ **Pong! Bot is Alive.**")
+async def bot_ping(client, message):
+    await message.reply("✅ Bot is alive!")
 
-# 🔹 Ping Command for Userbot
 @userbot.on_message(filters.command("ping", prefixes=".") & filters.me)
-async def ping_userbot(client, message):
-    await message.reply_text("✅ **Pong! Userbot is Alive.**")
+async def userbot_ping(client, message):
+    await message.reply("✅ Userbot is alive!")
 
-# 🔹 Report Command (Userbot Reports, Not Bot)
+# 🎯 Report System (Userbot Reports)
 @bot.on_message(filters.command("report"))
 @userbot.on_message(filters.command("report", prefixes="/") & filters.me)
 async def report_user(client, message):
@@ -58,31 +36,28 @@ async def report_user(client, message):
             return await message.reply("⚠️ Usage: `/report @username reason` (e.g., `/report @user spam`)")
 
         username = args[1]
-        reason_key = args[2].lower()
+        reason = args[2].lower()
 
-        if reason_key not in REPORT_REASONS:
-            return await message.reply(f"⚠️ Invalid reason. Choose from: {', '.join(REPORT_REASONS.keys())}")
+        # 🎯 Get user details
+        entity = await userbot.get_users(username)
+        logging.info(f"✅ Entity Found: {entity}")
 
-        reason = REPORT_REASONS[reason_key]
+        peer = await userbot.resolve_peer(entity.id)
+        logging.info(f"✅ Peer Resolved: {peer}")
 
-        entity = await client.get_users(username)
-        peer = await client.resolve_peer(entity.id)
-
-        await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
-        await message.reply(f"✅ Successfully reported {username} for {reason_key}.")
-
+        # 🎯 Report user
+        await userbot.invoke(ReportPeer(peer=peer, reason=InputReportReasonSpam(), message="Reported by bot"))
+        await message.reply(f"✅ Successfully reported {username} for {reason}.")
+    
     except Exception as e:
         logging.error(f"Error: {e}")
-        await message.reply("⚠️ Failed to report. Check the username and reason.")
+        await message.reply(f"⚠️ Failed to report. Error: {e}")
 
-# 🔹 Main Function
+# 🎯 Start Bot & Userbot
 async def main():
-    await bot.start()
-    await userbot.start()
+    await asyncio.gather(bot.start(), userbot.start())
     logging.info("✅ Bot & Userbot started successfully!")
+    await asyncio.gather(bot.idle(), userbot.idle())
 
-    # Keep Bot Running
-    await asyncio.Event().wait()
-
-# Run the Bot
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
