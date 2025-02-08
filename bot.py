@@ -124,7 +124,7 @@ async def report_user(client, message):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
     
     # Check if session strings have been added
-    if not config or not config.get("is_session_added", False):
+    if not config or not config.get("is_session_added", True):
         return await message.reply("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।")
 
     # If session strings are added, show the report options
