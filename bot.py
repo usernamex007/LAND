@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time  # Import time module
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -70,6 +71,9 @@ async def add_session(client, message):
         userbot = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
         await userbot.start()
 
+        # Wait for a second before syncing the time
+        time.sleep(1)  # Adding a short delay to avoid sync issues
+
         # Sync the time after starting the userbot
         await userbot.sync()  # Synchronizes client time with Telegram servers
         
@@ -78,7 +82,6 @@ async def add_session(client, message):
     except Exception as e:
         logging.error(f"Error adding session: {e}")
         await message.reply(f"⚠️ Failed to add session. Error: {e}")
-        
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
 async def report_user(client, message):
