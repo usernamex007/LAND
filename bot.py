@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sqlite3
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.raw.functions.account import ReportPeer
@@ -17,12 +18,40 @@ API_ID = 23120489
 API_HASH = "ccfc629708e2f8a05c31ebe7961b5f92"
 BOT_TOKEN = "7984449177:AAFq5h_10P6yLlqv5CsjB_WJ8dRLK7U_JIw"
 
+# 📂 SQLite Database setup
+conn = sqlite3.connect('bot_config.db')
+cursor = conn.cursor()
+
+# Create table to store user data (session strings and config)
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS user_configs (
+    user_id INTEGER PRIMARY KEY,
+    session_strings TEXT,
+    config_made BOOLEAN
+)
+""")
+conn.commit()
+
 # 🎯 Bot Client
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # 🔹 Session storage and flag to check if sessions are added
 session_strings = []
 is_session_added = False  # Flag to track if sessions are added
+
+# Function to check if a user has already made a config
+def check_user_config(user_id):
+    cursor.execute("SELECT * FROM user_configs WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    return user_data
+
+# Function to update user config in the database
+def update_user_config(user_id, session_strings, config_made):
+    cursor.execute("""
+    INSERT OR REPLACE INTO user_configs (user_id, session_strings, config_made)
+    VALUES (?, ?, ?)
+    """, (user_id, session_strings, config_made))
+    conn.commit()
 
 # 🎯 Start Command
 @bot.on_message(filters.command("start"))
@@ -59,7 +88,9 @@ async def make_config(client, message):
     global is_session_added  # Use global variable to track session status
 
     # Check if sessions are already added
-    if is_session_added:
+    user_id = message.from_user.id
+    user_data = check_user_config(user_id)
+    if user_data and user_data[2]:  # If config_made is True
         return await message.reply("⚠️ Sessions are already configured! You can now start reporting.")
 
     args = message.text.split()
@@ -93,6 +124,9 @@ async def collect_session_strings(client, message):
             session_strings.extend(new_sessions)
             await message.reply(f"✅ {len(new_sessions)} session strings added successfully.")
             
+            # Save to database
+            update_user_config(message.from_user.id, ' '.join(new_sessions), True)
+
             # Reset expected session count and mark sessions as added
             del bot.expected_session_count
             is_session_added = True  # Set flag to True
