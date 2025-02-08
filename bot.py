@@ -95,7 +95,7 @@ async def report_user(client, message):
     )
 
 # 🎯 Report Handler (User clicks a reason)
-@bot.on_callback_query()
+@bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
     global userbot
 
@@ -138,15 +138,12 @@ async def handle_report(client, callback_query):
     )
 
 # 🎯 Bulk Report Handler
-@bot.on_callback_query()
+@bot.on_callback_query(filters.regex("^sendreport:"))
 async def send_bulk_reports(client, callback_query):
     global userbot
 
-    if not userbot or not userbot.is_connected:
+    if not userbot:
         return await callback_query.answer("⚠️ No session added! Use /addsession first.", show_alert=True)
-
-    if not callback_query.data.startswith("sendreport:"):
-        return
 
     data = callback_query.data.split(":")
     
@@ -179,7 +176,9 @@ async def send_bulk_reports(client, callback_query):
             await userbot.invoke(ReportPeer(peer=peer, reason=reason, message="Reported by bot"))
             await asyncio.sleep(1.5)  # Telegram API Limit Handling
 
+        # ✅ Report Complete Notification
         await callback_query.message.edit_text(f"✅ Successfully sent {count} reports against {username} for {reason_code.replace('_', ' ').title()}!")
+        await callback_query.answer(f"✅ Report against {username} is complete!", show_alert=True)
 
     except Exception as e:
         logging.error(f"Error reporting user: {e}")
