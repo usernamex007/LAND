@@ -28,8 +28,7 @@ userbot = None
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
     buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📖 Help", callback_data="help")],
-        [InlineKeyboardButton("Ping", callback_data="ping")]
+        [InlineKeyboardButton("📖 Help", callback_data="help")]
     ])
     await message.reply("👋 Welcome! Use /addsession <session_string> to add a session.", reply_markup=buttons)
 
@@ -174,15 +173,15 @@ async def send_bulk_reports(client, callback_query):
     )
 
 # 🎯 Ping Command
-@bot.on_callback_query(filters.regex("^ping$"))
-async def ping_command(client, callback_query):
-    await callback_query.answer("Pong! The bot is working fine.", show_alert=True)
+@bot.on_message(filters.command("ping"))
+async def ping(client, message):
+    await message.reply("🏓 Pong! The bot is active.")
 
 # 🎯 Start Bot Properly
 async def main():
     await bot.start()
     logging.info("✅ Bot started successfully!")
-    await asyncio.Event().wait()
+    await bot.idle()  # Keeps the bot running and waits for messages
 
 if __name__ == "__main__":
     asyncio.run(main())
