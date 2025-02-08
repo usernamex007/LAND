@@ -57,7 +57,9 @@ async def report_user(client, message):
 async def main():
     await asyncio.gather(bot.start(), userbot.start())
     logging.info("✅ Bot & Userbot started successfully!")
-    await asyncio.gather(bot.idle(), userbot.idle())
+
+    # 🎯 Keep both clients running
+    await asyncio.gather(bot.run_until_disconnected(), userbot.run_until_disconnected())
 
 if __name__ == "__main__":
     asyncio.run(main())
