@@ -115,7 +115,7 @@ async def collect_session_strings(client, message):
         else:
             await message.reply(f"⚠️ You need to provide exactly {bot.expected_session_count} session strings. Please try again.")
     else:
-        await message.reply("⚠️ Please start by using the /make_config <number> command to add session strings.")
+        await message.reply("⚠️ No need to add session strings again! Sessions have been configured. You can proceed with reporting.")
 
 # 🎯 Report Command (User chooses a reason)
 @bot.on_message(filters.command("report"))
