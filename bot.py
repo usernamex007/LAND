@@ -101,7 +101,7 @@ async def report_user(client, message):
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
     
     if not config or not config.get("is_session_added", False):
-        return await message.reply("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।")
+        return await message.reply("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।")
 
     buttons = [
         [InlineKeyboardButton("I don't like it", callback_data=f"report:other")],
@@ -124,10 +124,11 @@ async def report_user(client, message):
 # 🎯 Report Handler (User clicks a reason)
 @bot.on_callback_query(filters.regex("^report:"))
 async def handle_report(client, callback_query):
+    # Check if session strings have been added
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
 
     if not config or not config.get("is_session_added", False):
-        return await callback_query.answer("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।", show_alert=True)
+        return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
     
@@ -166,10 +167,11 @@ async def handle_report(client, callback_query):
 # 🎯 Bulk Report Handler
 @bot.on_callback_query(filters.regex("^sendreport:"))
 async def send_bulk_reports(client, callback_query):
+    # Check if session strings have been added
     config = config_collection.find_one({"bot_id": BOT_TOKEN})
 
     if not config or not config.get("is_session_added", False):
-        return await callback_query.answer("⚠️ सत्र जोड़ने के लिए कृपया /make_config कमांड का उपयोग करें।", show_alert=True)
+        return await callback_query.answer("⚠️ कृपया पहले session strings जोड़ें। रिपोर्ट करने से पहले session strings जोड़ना आवश्यक है।", show_alert=True)
 
     data = callback_query.data.split(":")
     
